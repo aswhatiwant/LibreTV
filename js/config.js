@@ -16,7 +16,7 @@ const SITE_CONFIG = {
     name: 'LibreTV',
     url: 'https://libretv.is-an.org',
     description: '免费在线视频搜索与观看平台',
-    logo: 'image/logo.png?v=20260422-7b83dda',
+    logo: 'image/logo.png?v=20260422-b608457',
     version: '1.0.3'
 };
 
@@ -129,10 +129,6 @@ function normalizeMediaUrl(rawUrl, baseUrl = '') {
         const absoluteUrl = /^[a-z][a-z0-9+.-]*:/i.test(url)
             ? new URL(url)
             : new URL(url, baseUrl || window.location.origin);
-
-        if (window.location.protocol === 'https:' && absoluteUrl.protocol === 'http:') {
-            absoluteUrl.protocol = 'https:';
-        }
 
         return absoluteUrl.toString();
     } catch (error) {

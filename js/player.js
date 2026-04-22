@@ -1679,7 +1679,7 @@ async function showSwitchResourceModal() {
             <div class="relative group ${isCurrentSource ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:scale-105 transition-transform'}" 
                  ${!isCurrentSource ? `onclick="switchToResource('${sourceKey}', '${result.vod_id}')"` : ''}>
                 <div class="aspect-[2/3] rounded-lg overflow-hidden bg-gray-800 relative">
-                    <img src="${normalizeMediaUrl(result.vod_pic, API_SITES[sourceKey]?.api || '')}"
+                    <img src="${ProxyAuth?.buildProxyUrlSync ? ProxyAuth.buildProxyUrlSync(normalizeMediaUrl(result.vod_pic, API_SITES[sourceKey]?.api || '')) : normalizeMediaUrl(result.vod_pic, API_SITES[sourceKey]?.api || '')}"
                          alt="${result.vod_name}"
                          class="w-full h-full object-cover"
                          onerror="this.src='${getDefaultPosterDataUrl()}'">

@@ -748,7 +748,10 @@ async function search() {
                 ? item.api_url
                 : (API_SITES[sourceCode] && API_SITES[sourceCode].api) || '';
             const coverUrl = normalizeMediaUrl(item.vod_pic, sourceApi);
-            const hasCover = !!coverUrl;
+            const proxiedCoverUrl = ProxyAuth?.buildProxyUrlSync
+                ? ProxyAuth.buildProxyUrlSync(coverUrl)
+                : `${PROXY_URL}${encodeURIComponent(coverUrl)}`;
+            const hasCover = !!proxiedCoverUrl;
             const posterFallback = getDefaultPosterDataUrl();
 
             return `
@@ -757,9 +760,9 @@ async function search() {
                     <div class="flex h-full">
                         ${hasCover ? `
                         <div class="relative flex-shrink-0 search-card-img-container">
-                            <img src="${coverUrl}" alt="${safeName}"
+                            <img src="${proxiedCoverUrl}" alt="${safeName}"
                                  class="h-full w-full object-cover transition-transform hover:scale-110" 
-                                 onerror="this.onerror=null; this.src='${posterFallback}'; this.classList.add('object-contain');"
+                                 onerror="this.onerror=null; this.src='${coverUrl || posterFallback}'; this.classList.add('object-contain');"
                                  loading="lazy">
                             <div class="absolute inset-0 bg-gradient-to-r from-black/30 to-transparent"></div>
                         </div>` : ''}
