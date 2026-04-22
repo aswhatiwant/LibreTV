@@ -107,6 +107,43 @@ const SECURITY_CONFIG = {
     // allowedApiDomains 不再需要，因为所有请求都通过内部代理
 };
 
+function normalizeMediaUrl(rawUrl, baseUrl = '') {
+    if (!rawUrl || typeof rawUrl !== 'string') {
+        return '';
+    }
+
+    const url = rawUrl.trim();
+    if (!url) {
+        return '';
+    }
+
+    if (url.startsWith('data:')) {
+        return url;
+    }
+
+    if (url.startsWith('//')) {
+        return `${window.location.protocol}${url}`;
+    }
+
+    try {
+        const absoluteUrl = /^[a-z][a-z0-9+.-]*:/i.test(url)
+            ? new URL(url)
+            : new URL(url, baseUrl || window.location.origin);
+
+        if (window.location.protocol === 'https:' && absoluteUrl.protocol === 'http:') {
+            absoluteUrl.protocol = 'https:';
+        }
+
+        return absoluteUrl.toString();
+    } catch (error) {
+        return url;
+    }
+}
+
+function getDefaultPosterDataUrl() {
+    return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjQ1MCIgdmlld0JveD0iMCAwIDMwMCA0NTAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjMwMCIgaGVpZ2h0PSI0NTAiIGZpbGw9IiMxMTEiLz48cmVjdCB4PSI0MCIgeT0iNjAiIHdpZHRoPSIyMjAiIGhlaWdodD0iMzMwIiByeD0iMjQiIGZpbGw9IiMxYjFiMWIiIHN0cm9rZT0iIzMzMyIvPjxwYXRoIGQ9Ik0xMDAgMTkwbDYwLTQwcDYwIDQwIiBzdHJva2U9IiM2NjYiIHN0cm9rZS13aWR0aD0iMTIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgZmlsbD0ibm9uZSIvPjxwYXRoIGQ9Ik0xMDAgMjYwaDkwIiBzdHJva2U9IiM2NjYiIHN0cm9rZS13aWR0aD0iMTIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjx0ZXh0IHg9IjE1MCIgeT0iMzQwIiBmaWxsPSIjOTk5IiBmb250LXNpemU9IjI0IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0ic3lzdGVtLXVpLC1hcHBsZS1zeXN0ZW0sU2Vnb2UgVUksUm9ib3RvLEFyaWFsIj7ov5HmiqXkvJrlkKc8L3RleHQ+PC9zdmc+';
+}
+
 // 添加多个自定义API源的配置
 const CUSTOM_API_CONFIG = {
     separator: ',',           // 分隔符
@@ -121,3 +158,6 @@ const CUSTOM_API_CONFIG = {
 
 // 隐藏内置黄色采集站API的变量
 const HIDE_BUILTIN_ADULT_APIS = false;
+
+window.normalizeMediaUrl = normalizeMediaUrl;
+window.getDefaultPosterDataUrl = getDefaultPosterDataUrl;

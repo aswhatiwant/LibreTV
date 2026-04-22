@@ -529,11 +529,13 @@ function renderDoubanCards(data, container) {
                 .replace(/>/g, '&gt;');
             
             // 处理图片URL
-            // 1. 直接使用豆瓣图片URL (添加no-referrer属性)
-            const originalCoverUrl = item.cover;
+            // 1. 先规范化豆瓣图片地址，兼容协议相对和相对路径
+            const originalCoverUrl = normalizeMediaUrl(item.cover, 'https://movie.douban.com/');
             
-            // 2. 也准备代理URL作为备选
-            const proxiedCoverUrl = PROXY_URL + encodeURIComponent(originalCoverUrl);
+            // 2. 准备代理URL作为备选
+            const proxiedCoverUrl = ProxyAuth?.buildProxyUrlSync
+                ? ProxyAuth.buildProxyUrlSync(originalCoverUrl)
+                : `${PROXY_URL}${encodeURIComponent(originalCoverUrl)}`;
             
             // 为不同设备优化卡片布局
             card.innerHTML = `

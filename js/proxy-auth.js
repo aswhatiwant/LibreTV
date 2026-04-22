@@ -54,6 +54,31 @@ async function getPasswordHash() {
     return null;
 }
 
+function getPasswordHashSync() {
+    const storedHash = localStorage.getItem('proxyAuthHash');
+    if (storedHash) {
+        return storedHash;
+    }
+
+    try {
+        const stored = localStorage.getItem(PASSWORD_CONFIG.localStorageKey);
+        if (stored) {
+            const parsed = JSON.parse(stored);
+            if (parsed?.passwordHash) {
+                return parsed.passwordHash;
+            }
+        }
+    } catch (error) {
+        console.error('读取同步代理哈希失败:', error);
+    }
+
+    if (window.__ENV__ && window.__ENV__.PASSWORD) {
+        return window.__ENV__.PASSWORD;
+    }
+
+    return null;
+}
+
 /**
  * 为代理请求URL添加鉴权参数
  */
@@ -76,6 +101,20 @@ async function addAuthToProxyUrl(url) {
         console.error('添加代理鉴权失败:', error);
         return url;
     }
+}
+
+function buildProxyUrlSync(url) {
+    const normalizedUrl = window.normalizeMediaUrl ? window.normalizeMediaUrl(url) : url;
+    if (!normalizedUrl) {
+        return '';
+    }
+
+    const hash = getPasswordHashSync();
+    if (!hash) {
+        return `${PROXY_URL}${encodeURIComponent(normalizedUrl)}`;
+    }
+
+    return `${PROXY_URL}${encodeURIComponent(normalizedUrl)}?auth=${encodeURIComponent(hash)}&t=${Date.now()}`;
 }
 
 /**
@@ -123,5 +162,7 @@ window.ProxyAuth = {
     addAuthToProxyUrl,
     validateProxyAuth,
     clearAuthCache,
-    getPasswordHash
+    getPasswordHash,
+    getPasswordHashSync,
+    buildProxyUrlSync
 };
