@@ -128,7 +128,7 @@ async function fetchContentWithType(targetUrl, requestHeaders) {
         'User-Agent': getRandomUserAgent(),
         'Accept': requestHeaders['accept'] || '*/*',
         'Accept-Language': requestHeaders['accept-language'] || 'zh-CN,zh;q=0.9,en;q=0.8',
-        'Referer': requestHeaders['referer'] || new URL(targetUrl).origin,
+        'Referer': new URL(targetUrl).origin,
     };
     Object.keys(headers).forEach(key => headers[key] === undefined || headers[key] === null || headers[key] === '' ? delete headers[key] : {});
     logDebug(`Fetching target: ${targetUrl} with headers: ${JSON.stringify(headers)}`);
@@ -140,10 +140,12 @@ async function fetchContentWithType(targetUrl, requestHeaders) {
             const err = new Error(`HTTP error ${response.status}: ${response.statusText}. URL: ${targetUrl}. Body: ${errorBody.substring(0, 200)}`);
             err.status = response.status; throw err;
         }
-        const content = await response.text();
         const contentType = response.headers.get('content-type') || '';
-        logDebug(`Fetch success: ${targetUrl}, Content-Type: ${contentType}, Length: ${content.length}`);
-        return { content, contentType, responseHeaders: response.headers };
+        const isBinary = contentType.startsWith('image/') || contentType.startsWith('audio/') || contentType.startsWith('video/');
+        const content = isBinary ? await response.arrayBuffer() : await response.text();
+        const length = isBinary ? content.byteLength : content.length;
+        logDebug(`Fetch success: ${targetUrl}, Content-Type: ${contentType}, Length: ${length}`);
+        return { content, contentType, responseHeaders: response.headers, isBinary };
     } catch (error) {
         logDebug(`Fetch exception for ${targetUrl}: ${error.message}`);
         throw new Error(`Failed to fetch target URL ${targetUrl}: ${error.message}`);

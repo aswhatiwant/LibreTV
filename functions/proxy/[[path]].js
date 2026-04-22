@@ -253,8 +253,8 @@ export async function onRequest(context) {
             'Accept': '*/*',
             // 尝试传递一些原始请求的头信息
             'Accept-Language': request.headers.get('Accept-Language') || 'zh-CN,zh;q=0.9,en;q=0.8',
-            // 尝试设置 Referer 为目标网站的域名，或者传递原始 Referer
-            'Referer': request.headers.get('Referer') || new URL(targetUrl).origin
+            // 对代理目标统一使用其自身 origin，避免把页面来源站点当作热链来源
+            'Referer': new URL(targetUrl).origin
         });
 
         try {
@@ -269,11 +269,12 @@ export async function onRequest(context) {
                  throw new Error(`HTTP error ${response.status}: ${response.statusText}. URL: ${targetUrl}. Body: ${errorBody.substring(0, 150)}`);
             }
 
-            // 读取响应内容为文本
-            const content = await response.text();
             const contentType = response.headers.get('Content-Type') || '';
-            logDebug(`请求成功: ${targetUrl}, Content-Type: ${contentType}, 内容长度: ${content.length}`);
-            return { content, contentType, responseHeaders: response.headers }; // 同时返回原始响应头
+            const isBinary = isMediaFile(targetUrl, contentType) && !isM3u8Content('', contentType);
+            const content = isBinary ? await response.arrayBuffer() : await response.text();
+            const contentLength = isBinary ? content.byteLength : content.length;
+            logDebug(`请求成功: ${targetUrl}, Content-Type: ${contentType}, 内容长度: ${contentLength}`);
+            return { content, contentType, responseHeaders: response.headers, isBinary }; // 同时返回原始响应头
 
         } catch (error) {
              logDebug(`请求彻底失败: ${targetUrl}: ${error.message}`);
@@ -500,7 +501,7 @@ export async function onRequest(context) {
         logDebug(`收到代理请求: ${targetUrl}`);
 
         // --- 缓存检查 (KV) ---
-        const cacheKey = `proxy_raw:${targetUrl}`; // 使用原始内容的缓存键
+        const cacheKey = `proxy_raw_v2:${targetUrl}`; // 版本化缓存键，避免旧的损坏二进制缓存继续命中
         let kvNamespace = null;
         try {
             kvNamespace = env.LIBRETV_PROXY_KV;
@@ -520,6 +521,7 @@ export async function onRequest(context) {
                     let headers = {};
                     try { headers = JSON.parse(cachedData.headers); } catch(e){} // 解析头部
                     const contentType = headers['content-type'] || headers['Content-Type'] || '';
+                    const isBinary = !(typeof content === 'string');
 
                     if (isM3u8Content(content, contentType)) {
                         logDebug(`缓存内容是 M3U8，重新处理: ${targetUrl}`);
@@ -527,7 +529,7 @@ export async function onRequest(context) {
                         return createM3u8Response(processedM3u8);
                     } else {
                         logDebug(`从缓存返回非 M3U8 内容: ${targetUrl}`);
-                        return createResponse(content, 200, new Headers(headers));
+                        return createResponse(isBinary ? Uint8Array.from(atob(content), c => c.charCodeAt(0)) : content, 200, new Headers(headers));
                     }
                 } else {
                      logDebug(`[缓存未命中] 原始内容: ${targetUrl}`);
@@ -539,10 +541,10 @@ export async function onRequest(context) {
         }
 
         // --- 实际请求 ---
-        const { content, contentType, responseHeaders } = await fetchContentWithType(targetUrl);
+        const { content, contentType, responseHeaders, isBinary } = await fetchContentWithType(targetUrl);
 
         // --- 写入缓存 (KV) ---
-        if (kvNamespace) {
+        if (kvNamespace && !isBinary) {
              try {
                  const headersToCache = {};
                  responseHeaders.forEach((value, key) => { headersToCache[key.toLowerCase()] = value; });
@@ -557,7 +559,15 @@ export async function onRequest(context) {
         }
 
         // --- 处理响应 ---
-        if (isM3u8Content(content, contentType)) {
+        if (isBinary) {
+            logDebug(`内容是二进制媒体，直接返回: ${targetUrl}`);
+            const finalHeaders = new Headers(responseHeaders);
+            finalHeaders.set('Cache-Control', `public, max-age=${CACHE_TTL}`);
+            finalHeaders.set("Access-Control-Allow-Origin", "*");
+            finalHeaders.set("Access-Control-Allow-Methods", "GET, HEAD, POST, OPTIONS");
+            finalHeaders.set("Access-Control-Allow-Headers", "*");
+            return createResponse(content, 200, finalHeaders);
+        } else if (isM3u8Content(content, contentType)) {
             logDebug(`内容是 M3U8，开始处理: ${targetUrl}`);
             const processedM3u8 = await processM3u8Content(targetUrl, content, 0, env);
             return createM3u8Response(processedM3u8);
