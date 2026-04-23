@@ -40,6 +40,10 @@ const API_SITES = {
     commons_video: {
         name: '维基共享资源·视频',
         adapter: 'wikimedia_commons_video'
+    },
+    superembed: {
+        name: 'SuperEmbed·魔法',
+        adapter: 'superembed_magic'
     }
     //ARCHIVE https://telegra.ph/APIs-08-12
 };
@@ -225,6 +229,42 @@ function buildCommonsSearchUrl(query, page = 1) {
     return `https://commons.wikimedia.org/w/api.php?${params.toString()}`;
 }
 
+function buildSuperEmbedSearchUrl(query) {
+    const params = new URLSearchParams({
+        type: 'search',
+        query: String(query || '').trim(),
+        max_results: '5'
+    });
+    return `https://seapi.link/?${params.toString()}`;
+}
+
+function buildSuperEmbedPlayerUrl(item) {
+    const imdbId = item?.imdb_id || item?.imdb || item?.imdbId || '';
+    const tmdbId = item?.tmdb_id || item?.tmdb || item?.tmdbId || '';
+    const type = item?.type || item?.media_type || '';
+    const season = item?.season || item?.s || '';
+    const episode = item?.episode || item?.e || '';
+    const useTmdb = !!tmdbId && !String(imdbId || '').startsWith('tt');
+    const videoId = useTmdb ? tmdbId : (imdbId || tmdbId || item?.id || '');
+
+    if (!videoId) {
+        return item?.json || item?.url || item?.embed_url || item?.link || '';
+    }
+
+    const params = new URLSearchParams({
+        video_id: String(videoId)
+    });
+    if (useTmdb) {
+        params.set('tmdb', '1');
+    }
+    if (type === 'tv' || season || episode) {
+        if (season) params.set('s', String(season));
+        if (episode) params.set('e', String(episode));
+    }
+
+    return item?.vip ? `https://multiembed.mov/directstream.php?${params.toString()}` : `https://multiembed.mov/?${params.toString()}`;
+}
+
 function getSpecialSourceConfig(sourceCode) {
     return API_SITES[sourceCode] && API_SITES[sourceCode].adapter ? API_SITES[sourceCode] : null;
 }
@@ -281,6 +321,40 @@ function mapCommonsSearchResults(pages, sourceCode) {
     });
 }
 
+function normalizeSuperEmbedResults(data) {
+    if (Array.isArray(data?.results)) {
+        return data.results;
+    }
+    if (Array.isArray(data?.data)) {
+        return data.data;
+    }
+    if (Array.isArray(data?.items)) {
+        return data.items;
+    }
+    return [];
+}
+
+function mapSuperEmbedSearchResults(results, sourceCode) {
+    const sourceName = API_SITES[sourceCode].name;
+    return (results || []).map((item, index) => {
+        const playerUrl = buildSuperEmbedPlayerUrl(item);
+        const imdbId = item?.imdb_id || item?.imdb || item?.imdbId || '';
+        const tmdbId = item?.tmdb_id || item?.tmdb || item?.tmdbId || '';
+        const vodId = imdbId || tmdbId || item?.id || item?.video_id || `${item?.title || 'superembed'}-${index}`;
+        return {
+            vod_id: vodId,
+            vod_name: item?.title || item?.name || item?.movie_title || `结果 ${index + 1}`,
+            vod_pic: item?.poster || item?.poster_url || item?.thumbnail || item?.image || '',
+            vod_remarks: item?.quality || item?.year || item?.server || '',
+            vod_content: [item?.server, item?.quality, item?.type].filter(Boolean).join(' · '),
+            type_name: item?.type || item?.media_type || 'SuperEmbed',
+            source_name: sourceName,
+            source_code: sourceCode,
+            api_url: playerUrl
+        };
+    });
+}
+
 function isPlayableArchiveFile(file) {
     const name = String(file?.name || '').toLowerCase();
     const format = String(file?.format || '').toLowerCase();
@@ -313,6 +387,17 @@ async function searchSpecialSource(sourceCode, query, page = 1) {
         return {
             code: 200,
             list: mapCommonsSearchResults(data?.query?.pages || {}, sourceCode),
+            pagecount: 1
+        };
+    }
+
+    if (sourceConfig.adapter === 'superembed_magic') {
+        const apiUrl = buildSuperEmbedSearchUrl(query);
+        const data = await fetchProxyJson(apiUrl);
+        const results = normalizeSuperEmbedResults(data);
+        return {
+            code: 200,
+            list: mapSuperEmbedSearchResults(results, sourceCode),
             pagecount: 1
         };
     }
@@ -361,6 +446,29 @@ async function fetchSpecialSourceDetail(sourceCode, id) {
                 title: meta.ObjectName?.value || page?.title?.replace(/^File:/, '') || id,
                 cover: info.thumburl || info.url || '',
                 desc: cleanHtmlText(meta.ImageDescription?.value || meta.Credit?.value || meta.Artist?.value || ''),
+                source_name: sourceConfig.name,
+                source_code: sourceCode
+            }
+        };
+    }
+
+    if (sourceConfig.adapter === 'superembed_magic') {
+        const isTmdb = /^\d+$/.test(String(id));
+        const apiUrl = isTmdb
+            ? `https://seapi.link/?type=tmdb&id=${encodeURIComponent(id)}&max_results=1`
+            : `https://seapi.link/?type=imdb&id=${encodeURIComponent(id)}&max_results=1`;
+        const data = await fetchProxyJson(apiUrl);
+        const results = normalizeSuperEmbedResults(data);
+        const item = results[0] || {};
+        const playerUrl = buildSuperEmbedPlayerUrl(item) || item?.json || item?.url || item?.embed_url || '';
+        return {
+            code: 200,
+            episodes: playerUrl ? [playerUrl] : [],
+            detailUrl: apiUrl,
+            videoInfo: {
+                title: item?.title || item?.name || id,
+                cover: item?.poster || item?.poster_url || item?.thumbnail || '',
+                desc: cleanHtmlText([item?.server, item?.quality, item?.type].filter(Boolean).join(' · ')),
                 source_name: sourceConfig.name,
                 source_code: sourceCode
             }

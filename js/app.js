@@ -1,6 +1,7 @@
 // 全局变量
 const LEGACY_DEFAULT_SELECTED_APIS = ["tyyszy", "dyttzy", "bfzy", "ruyi"];
 const CURRENT_DEFAULT_SELECTED_APIS = ["tyyszy", "bfzy", "dyttzy", "ruyi", "ia_pd", "ia_cc", "commons_video"];
+const MAGIC_DEFAULT_APIS = ["ia_pd", "ia_cc", "commons_video", "superembed"];
 let selectedAPIs = JSON.parse(localStorage.getItem('selectedAPIs') || JSON.stringify(CURRENT_DEFAULT_SELECTED_APIS)); // 默认选中资源
 let customAPIs = JSON.parse(localStorage.getItem('customAPIs') || '[]'); // 存储自定义API列表
 
@@ -44,6 +45,12 @@ document.addEventListener('DOMContentLoaded', function () {
         localStorage.setItem('hasInitializedDefaults', 'true');
     } else if (Array.isArray(selectedAPIs) && selectedAPIs.length === LEGACY_DEFAULT_SELECTED_APIS.length && LEGACY_DEFAULT_SELECTED_APIS.every((id, index) => selectedAPIs[index] === id)) {
         selectedAPIs = [...CURRENT_DEFAULT_SELECTED_APIS];
+        localStorage.setItem('selectedAPIs', JSON.stringify(selectedAPIs));
+    }
+
+    const mergedSelectedAPIs = [...new Set([...selectedAPIs, ...MAGIC_DEFAULT_APIS])];
+    if (mergedSelectedAPIs.length !== selectedAPIs.length) {
+        selectedAPIs = mergedSelectedAPIs;
         localStorage.setItem('selectedAPIs', JSON.stringify(selectedAPIs));
     }
 
@@ -1014,8 +1021,11 @@ function playVideo(url, vod_name, sourceCode, episodeIndex = 0, vodId = '') {
     // 获取当前路径作为返回页面
     let currentPath = window.location.href;
 
+    const isExternalEmbed = window.getSpecialSourceConfig && window.getSpecialSourceConfig(sourceCode)?.adapter === 'superembed_magic';
     // 构建播放页面URL，使用watch.html作为中间跳转页
-    let watchUrl = `watch.html?id=${encodeURIComponent(vodId || '')}&source=${encodeURIComponent(sourceCode || '')}&url=${encodeURIComponent(url)}&index=${episodeIndex}&title=${encodeURIComponent(vod_name || '')}`;
+    let watchUrl = isExternalEmbed
+        ? `player.html?external=1&id=${encodeURIComponent(vodId || '')}&source=${encodeURIComponent(sourceCode || '')}&url=${encodeURIComponent(url)}&index=${episodeIndex}&title=${encodeURIComponent(vod_name || '')}`
+        : `watch.html?id=${encodeURIComponent(vodId || '')}&source=${encodeURIComponent(sourceCode || '')}&url=${encodeURIComponent(url)}&index=${episodeIndex}&title=${encodeURIComponent(vod_name || '')}`;
 
     // 添加返回URL参数
     if (currentPath.includes('index.html') || currentPath.endsWith('/')) {

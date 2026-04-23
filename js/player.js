@@ -1,4 +1,5 @@
-const selectedAPIs = JSON.parse(localStorage.getItem('selectedAPIs') || '[]');
+const MAGIC_DEFAULT_APIS = ["ia_pd", "ia_cc", "commons_video", "superembed"];
+const selectedAPIs = [...new Set(JSON.parse(localStorage.getItem('selectedAPIs') || '[]').concat(MAGIC_DEFAULT_APIS))];
 const customAPIs = JSON.parse(localStorage.getItem('customAPIs') || '[]'); // 存储自定义API列表
 
 // 改进返回功能
@@ -91,6 +92,7 @@ let shortcutHintTimeout = null; // 用于控制快捷键提示显示时间
 let adFilteringEnabled = true; // 默认开启广告过滤
 let progressSaveInterval = null; // 定期保存进度的计时器
 let currentVideoUrl = ''; // 记录当前实际的视频URL
+let externalEmbedMode = false; // 外链嵌入模式
 const isWebkit = (typeof window.webkitConvertPointFromNodeToPage === 'function')
 Artplayer.FULLSCREEN_WEB_IN_BODY = true;
 
@@ -121,6 +123,7 @@ function initializePageContent() {
     let videoUrl = urlParams.get('url');
     const title = urlParams.get('title');
     const sourceCode = urlParams.get('source');
+    externalEmbedMode = urlParams.get('external') === '1';
     let index = parseInt(urlParams.get('index') || '0');
     const episodesList = urlParams.get('episodes'); // 从URL获取集数信息
     const savedPosition = parseInt(urlParams.get('position') || '0'); // 获取保存的播放位置
@@ -400,6 +403,11 @@ function showShortcutHint(text, direction) {
 function initPlayer(videoUrl) {
     if (!videoUrl) {
         return
+    }
+
+    if (externalEmbedMode) {
+        renderExternalEmbedPlayer(videoUrl);
+        return;
     }
 
     // 销毁旧实例
@@ -1385,6 +1393,36 @@ function setupLongPressSpeedControl() {
     });
 }
 
+function renderExternalEmbedPlayer(videoUrl) {
+    const playerContainer = document.getElementById('player');
+    const loading = document.getElementById('player-loading');
+    const error = document.getElementById('error');
+
+    if (art) {
+        try {
+            art.destroy();
+        } catch (e) {
+        }
+        art = null;
+    }
+
+    if (loading) loading.style.display = 'none';
+    if (error) error.style.display = 'none';
+
+    if (playerContainer) {
+        playerContainer.innerHTML = `
+            <iframe
+                src="${videoUrl}"
+                class="w-full min-h-[65vh] bg-black rounded-lg"
+                allow="autoplay; fullscreen; picture-in-picture"
+                allowfullscreen
+                referrerpolicy="no-referrer"
+                sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-presentation"
+            ></iframe>
+        `;
+    }
+}
+
 // 清除视频进度记录
 function clearVideoProgress() {
     const progressKey = `videoProgress_${getVideoId()}`;
@@ -1742,6 +1780,8 @@ async function switchToResource(sourceKey, vodId) {
             // 内置API
             apiParams = '&source=' + sourceKey;
         }
+
+        const isExternalEmbed = window.getSpecialSourceConfig && window.getSpecialSourceConfig(sourceKey)?.adapter === 'superembed_magic';
         
         // Add a timestamp to prevent caching
         const timestamp = new Date().getTime();
@@ -1770,7 +1810,9 @@ async function switchToResource(sourceKey, vodId) {
         const targetUrl = data.episodes[targetIndex];
         
         // 构建播放页面URL
-        const watchUrl = `player.html?id=${encodeURIComponent(vodId)}&source=${encodeURIComponent(sourceKey)}&url=${encodeURIComponent(targetUrl)}&index=${targetIndex}&title=${encodeURIComponent(currentVideoTitle)}`;
+        const watchUrl = isExternalEmbed
+            ? `player.html?external=1&id=${encodeURIComponent(vodId)}&source=${encodeURIComponent(sourceKey)}&url=${encodeURIComponent(targetUrl)}&index=${targetIndex}&title=${encodeURIComponent(currentVideoTitle)}`
+            : `player.html?id=${encodeURIComponent(vodId)}&source=${encodeURIComponent(sourceKey)}&url=${encodeURIComponent(targetUrl)}&index=${targetIndex}&title=${encodeURIComponent(currentVideoTitle)}`;
         
         // 保存当前状态到localStorage
         try {
