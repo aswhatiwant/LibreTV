@@ -16,7 +16,7 @@ const SITE_CONFIG = {
     name: 'LibreTV',
     url: 'https://libretv.is-an.org',
     description: '免费在线视频搜索与观看平台',
-    logo: 'image/logo.png?v=20260422-b608457',
+    logo: 'image/logo.png?v=20260423-free-srcs',
     version: '1.0.3'
 };
 
@@ -26,6 +26,20 @@ const API_SITES = {
         api: 'https://www.example.com/api.php/provide/vod',
         name: '空内容测试源',
         adult: true
+    },
+    ia_pd: {
+        name: '互联网档案馆·公版电影',
+        adapter: 'internet_archive',
+        archiveLicenseFilter: 'licenseurl:(*publicdomain*)'
+    },
+    ia_cc: {
+        name: '互联网档案馆·CC电影',
+        adapter: 'internet_archive',
+        archiveLicenseFilter: 'licenseurl:(*creativecommons*)'
+    },
+    commons_video: {
+        name: '维基共享资源·视频',
+        adapter: 'wikimedia_commons_video'
     }
     //ARCHIVE https://telegra.ph/APIs-08-12
 };
@@ -157,3 +171,205 @@ const HIDE_BUILTIN_ADULT_APIS = false;
 
 window.normalizeMediaUrl = normalizeMediaUrl;
 window.getDefaultPosterDataUrl = getDefaultPosterDataUrl;
+
+function escapeApiQueryTerm(value) {
+    return String(value || '').replace(/[\\"]/g, ' ').trim();
+}
+
+function cleanHtmlText(value) {
+    return String(value || '')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+function buildArchiveSearchQuery(query, licenseFilter) {
+    const searchTerm = escapeApiQueryTerm(query);
+    const parts = ['mediatype:(movies OR movie)', licenseFilter];
+    if (searchTerm) {
+        parts.push(`(${searchTerm})`);
+    }
+    return parts.join(' AND ');
+}
+
+function buildArchiveSearchUrl(query, page = 1, licenseFilter = 'licenseurl:(*publicdomain* OR *creativecommons*)') {
+    const rows = 24;
+    const archiveQuery = buildArchiveSearchQuery(query, licenseFilter);
+    return `https://archive.org/advancedsearch.php?q=${encodeURIComponent(archiveQuery)}&fl[]=identifier&fl[]=title&fl[]=description&fl[]=year&fl[]=downloads&rows=${rows}&page=${page}&output=json&sort[]=downloads%20desc`;
+}
+
+function buildArchivePosterUrl(identifier) {
+    return `https://archive.org/services/img/${encodeURIComponent(identifier)}`;
+}
+
+function buildArchiveDownloadUrl(identifier, fileName) {
+    return `https://archive.org/download/${encodeURIComponent(identifier)}/${encodeURIComponent(fileName)}`;
+}
+
+function buildCommonsSearchUrl(query, page = 1) {
+    const rows = 24;
+    const offset = Math.max(page - 1, 0) * rows;
+    const searchTerm = `${escapeApiQueryTerm(query)} filetype:video`.trim();
+    const params = new URLSearchParams({
+        action: 'query',
+        generator: 'search',
+        gsrsearch: searchTerm,
+        gsrnamespace: '6',
+        gsrlimit: String(rows),
+        gsroffset: String(offset),
+        prop: 'imageinfo',
+        iiprop: 'url|extmetadata|mime|size|dimensions',
+        iiurlwidth: '320',
+        format: 'json'
+    });
+    return `https://commons.wikimedia.org/w/api.php?${params.toString()}`;
+}
+
+function getSpecialSourceConfig(sourceCode) {
+    return API_SITES[sourceCode] && API_SITES[sourceCode].adapter ? API_SITES[sourceCode] : null;
+}
+
+async function fetchProxyJson(url) {
+    const proxiedUrl = await window.ProxyAuth?.addAuthToProxyUrl
+        ? await window.ProxyAuth.addAuthToProxyUrl(PROXY_URL + encodeURIComponent(url))
+        : PROXY_URL + encodeURIComponent(url);
+    const response = await fetch(proxiedUrl, {
+        headers: API_CONFIG.search.headers
+    });
+    if (!response.ok) {
+        throw new Error(`代理请求失败: ${response.status}`);
+    }
+    return response.json();
+}
+
+function mapArchiveSearchResults(docs, sourceCode) {
+    const sourceName = API_SITES[sourceCode].name;
+    return (docs || []).map(doc => {
+        const identifier = doc.identifier || '';
+        return {
+            vod_id: identifier,
+            vod_name: doc.title || identifier,
+            vod_pic: buildArchivePosterUrl(identifier),
+            vod_remarks: doc.year ? String(doc.year) : '',
+            vod_content: doc.description || '',
+            type_name: 'Internet Archive',
+            source_name: sourceName,
+            source_code: sourceCode,
+            api_url: identifier ? `https://archive.org/details/${encodeURIComponent(identifier)}` : ''
+        };
+    });
+}
+
+function mapCommonsSearchResults(pages, sourceCode) {
+    const sourceName = API_SITES[sourceCode].name;
+    const sortedPages = Object.values(pages || {}).sort((a, b) => (a.index || 0) - (b.index || 0));
+    return sortedPages.map(page => {
+        const info = Array.isArray(page.imageinfo) ? page.imageinfo[0] || {} : {};
+        const meta = info.extmetadata || {};
+        const title = meta.ObjectName?.value || page.title || '';
+        return {
+            vod_id: page.title || title,
+            vod_name: title.replace(/^File:/, ''),
+            vod_pic: info.thumburl || info.url || '',
+            vod_remarks: info.duration ? `${Math.round(info.duration)}秒` : '',
+            vod_content: cleanHtmlText(meta.ImageDescription?.value || meta.Credit?.value || meta.Artist?.value || ''),
+            type_name: 'Wikimedia Commons',
+            source_name: sourceName,
+            source_code: sourceCode,
+            api_url: page.title || ''
+        };
+    });
+}
+
+function isPlayableArchiveFile(file) {
+    const name = String(file?.name || '').toLowerCase();
+    const format = String(file?.format || '').toLowerCase();
+    return (
+        /\.(mp4|m4v|mkv|webm|ogv|mov|avi|mpg|mpeg|flv|ts)$/.test(name) ||
+        ['h.264', 'h.265', 'mpeg4', 'matroska', 'webm', 'mpeg', 'quicktime', 'ogg video', 'avi'].includes(format)
+    );
+}
+
+async function searchSpecialSource(sourceCode, query, page = 1) {
+    const sourceConfig = getSpecialSourceConfig(sourceCode);
+    if (!sourceConfig) {
+        throw new Error('无效的特殊源');
+    }
+
+    if (sourceConfig.adapter === 'internet_archive') {
+        const apiUrl = buildArchiveSearchUrl(query, page, sourceConfig.archiveLicenseFilter);
+        const data = await fetchProxyJson(apiUrl);
+        const docs = data?.response?.docs || [];
+        return {
+            code: 200,
+            list: mapArchiveSearchResults(docs, sourceCode),
+            pagecount: 1
+        };
+    }
+
+    if (sourceConfig.adapter === 'wikimedia_commons_video') {
+        const apiUrl = buildCommonsSearchUrl(query, page);
+        const data = await fetchProxyJson(apiUrl);
+        return {
+            code: 200,
+            list: mapCommonsSearchResults(data?.query?.pages || {}, sourceCode),
+            pagecount: 1
+        };
+    }
+
+    throw new Error('未支持的特殊源类型');
+}
+
+async function fetchSpecialSourceDetail(sourceCode, id) {
+    const sourceConfig = getSpecialSourceConfig(sourceCode);
+    if (!sourceConfig) {
+        throw new Error('无效的特殊源');
+    }
+
+    if (sourceConfig.adapter === 'internet_archive') {
+        const detailUrl = `https://archive.org/metadata/${encodeURIComponent(id)}`;
+        const data = await fetchProxyJson(detailUrl);
+        const files = Array.isArray(data?.files) ? data.files : [];
+        const episodes = [...new Set(files.filter(isPlayableArchiveFile).map(file => buildArchiveDownloadUrl(id, file.name)).filter(Boolean))];
+        return {
+            code: 200,
+            episodes,
+            detailUrl,
+            videoInfo: {
+                title: data?.metadata?.title || id,
+                cover: buildArchivePosterUrl(id),
+                desc: cleanHtmlText(data?.metadata?.description || data?.metadata?.subject || ''),
+                year: data?.metadata?.year || '',
+                source_name: sourceConfig.name,
+                source_code: sourceCode
+            }
+        };
+    }
+
+    if (sourceConfig.adapter === 'wikimedia_commons_video') {
+        const detailUrl = `https://commons.wikimedia.org/w/api.php?action=query&titles=${encodeURIComponent(id)}&prop=imageinfo&iiprop=url|extmetadata|mime|size|dimensions&iiurlwidth=320&format=json`;
+        const data = await fetchProxyJson(detailUrl);
+        const pages = data?.query?.pages || {};
+        const page = pages[Object.keys(pages)[0]];
+        const info = Array.isArray(page?.imageinfo) ? page.imageinfo[0] || {} : {};
+        const meta = info.extmetadata || {};
+        return {
+            code: 200,
+            episodes: info.url ? [info.url] : [],
+            detailUrl,
+            videoInfo: {
+                title: meta.ObjectName?.value || page?.title?.replace(/^File:/, '') || id,
+                cover: info.thumburl || info.url || '',
+                desc: cleanHtmlText(meta.ImageDescription?.value || meta.Credit?.value || meta.Artist?.value || ''),
+                source_name: sourceConfig.name,
+                source_code: sourceCode
+            }
+        };
+    }
+
+    throw new Error('未支持的特殊源详情');
+}
+
+window.getSpecialSourceConfig = getSpecialSourceConfig;
+window.searchSpecialSource = searchSpecialSource;
+window.fetchSpecialSourceDetail = fetchSpecialSourceDetail;

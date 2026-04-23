@@ -1,50 +1,47 @@
 async function searchByAPIAndKeyWord(apiId, query) {
     try {
-        let apiUrl, apiName, apiBaseUrl;
-        
+        let apiName;
+        const searchParams = new URLSearchParams({
+            wd: query,
+            source: apiId
+        });
+
         // 处理自定义API
         if (apiId.startsWith('custom_')) {
             const customIndex = apiId.replace('custom_', '');
             const customApi = getCustomApiInfo(customIndex);
             if (!customApi) return [];
-            
-            apiBaseUrl = customApi.url;
-            apiUrl = apiBaseUrl + API_CONFIG.search.path + encodeURIComponent(query);
             apiName = customApi.name;
+            searchParams.set('customApi', customApi.url);
+            if (customApi.detail) {
+                searchParams.set('customDetail', customApi.detail);
+            }
         } else {
             // 内置API
             if (!API_SITES[apiId]) return [];
-            apiBaseUrl = API_SITES[apiId].api;
-            apiUrl = apiBaseUrl + API_CONFIG.search.path + encodeURIComponent(query);
             apiName = API_SITES[apiId].name;
         }
-        
+
         // 添加超时处理
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 15000);
-        
-        // 添加鉴权参数到代理URL
-        const proxiedUrl = await window.ProxyAuth?.addAuthToProxyUrl ? 
-            await window.ProxyAuth.addAuthToProxyUrl(PROXY_URL + encodeURIComponent(apiUrl)) :
-            PROXY_URL + encodeURIComponent(apiUrl);
-        
-        const response = await fetch(proxiedUrl, {
-            headers: API_CONFIG.search.headers,
+
+        const response = await fetch(`/api/search?${searchParams.toString()}`, {
             signal: controller.signal
         });
-        
+
         clearTimeout(timeoutId);
-        
+
         if (!response.ok) {
             return [];
         }
-        
+
         const data = await response.json();
-        
+
         if (!data || !data.list || !Array.isArray(data.list) || data.list.length === 0) {
             return [];
         }
-        
+
         // 处理第一页结果
         const results = data.list.map(item => ({
             ...item,
@@ -63,24 +60,16 @@ async function searchByAPIAndKeyWord(apiId, query) {
             const additionalPagePromises = [];
             
             for (let page = 2; page <= pagesToFetch + 1; page++) {
-                // 构建分页URL
-                const pageUrl = apiBaseUrl + API_CONFIG.search.pagePath
-                    .replace('{query}', encodeURIComponent(query))
-                    .replace('{page}', page);
-                
                 // 创建获取额外页的Promise
                 const pagePromise = (async () => {
                     try {
                         const pageController = new AbortController();
                         const pageTimeoutId = setTimeout(() => pageController.abort(), 15000);
-                        
-                        // 添加鉴权参数到代理URL
-                        const proxiedPageUrl = await window.ProxyAuth?.addAuthToProxyUrl ? 
-                            await window.ProxyAuth.addAuthToProxyUrl(PROXY_URL + encodeURIComponent(pageUrl)) :
-                            PROXY_URL + encodeURIComponent(pageUrl);
-                        
-                        const pageResponse = await fetch(proxiedPageUrl, {
-                            headers: API_CONFIG.search.headers,
+
+                        const pageParams = new URLSearchParams(searchParams);
+                        pageParams.set('pg', String(page));
+
+                        const pageResponse = await fetch(`/api/search?${pageParams.toString()}`, {
                             signal: pageController.signal
                         });
                         

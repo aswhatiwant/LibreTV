@@ -1674,10 +1674,12 @@ async function showSwitchResourceModal() {
         const isCurrentSource = String(sourceKey) === String(currentSourceCode) && String(result.vod_id) === String(currentVideoId);
         const sourceName = resourceOptions.find(opt => opt.key === sourceKey)?.name || '未知资源';
         const speedResult = speedResults[sourceKey] || { speed: -1, error: '未测试' };
+        const clickSourceKey = JSON.stringify(sourceKey);
+        const clickVodId = JSON.stringify(result.vod_id ? String(result.vod_id) : '');
         
         html += `
             <div class="relative group ${isCurrentSource ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:scale-105 transition-transform'}" 
-                 ${!isCurrentSource ? `onclick="switchToResource('${sourceKey}', '${result.vod_id}')"` : ''}>
+                 ${!isCurrentSource ? `onclick="switchToResource(${clickSourceKey}, ${clickVodId})"` : ''}>
                 <div class="aspect-[2/3] rounded-lg overflow-hidden bg-gray-800 relative">
                     <img src="${ProxyAuth?.buildProxyUrlSync ? ProxyAuth.buildProxyUrlSync(normalizeMediaUrl(result.vod_pic, API_SITES[sourceKey]?.api || '')) : normalizeMediaUrl(result.vod_pic, API_SITES[sourceKey]?.api || '')}"
                          alt="${result.vod_name}"
@@ -1768,7 +1770,7 @@ async function switchToResource(sourceKey, vodId) {
         const targetUrl = data.episodes[targetIndex];
         
         // 构建播放页面URL
-        const watchUrl = `player.html?id=${vodId}&source=${sourceKey}&url=${encodeURIComponent(targetUrl)}&index=${targetIndex}&title=${encodeURIComponent(currentVideoTitle)}`;
+        const watchUrl = `player.html?id=${encodeURIComponent(vodId)}&source=${encodeURIComponent(sourceKey)}&url=${encodeURIComponent(targetUrl)}&index=${targetIndex}&title=${encodeURIComponent(currentVideoTitle)}`;
         
         // 保存当前状态到localStorage
         try {

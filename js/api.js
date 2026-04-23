@@ -3,6 +3,7 @@ async function handleApiRequest(url) {
     const customApi = url.searchParams.get('customApi') || '';
     const customDetail = url.searchParams.get('customDetail') || '';
     const source = url.searchParams.get('source') || 'heimuer';
+    const page = parseInt(url.searchParams.get('pg') || '1', 10) || 1;
     
     try {
         if (url.pathname === '/api/search') {
@@ -19,10 +20,20 @@ async function handleApiRequest(url) {
             if (!API_SITES[source] && source !== 'custom') {
                 throw new Error('无效的API来源');
             }
+
+            if (source !== 'custom' && window.getSpecialSourceConfig && window.getSpecialSourceConfig(source)) {
+                const specialResult = await window.searchSpecialSource(source, searchQuery, page);
+                return JSON.stringify(specialResult);
+            }
             
+            const searchPath = page > 1
+                ? API_CONFIG.search.pagePath
+                    .replace('{query}', encodeURIComponent(searchQuery))
+                    .replace('{page}', page)
+                : `${API_CONFIG.search.path}${encodeURIComponent(searchQuery)}`;
             const apiUrl = customApi
-                ? `${customApi}${API_CONFIG.search.path}${encodeURIComponent(searchQuery)}`
-                : `${API_SITES[source].api}${API_CONFIG.search.path}${encodeURIComponent(searchQuery)}`;
+                ? `${customApi}${searchPath}`
+                : `${API_SITES[source].api}${searchPath}`;
             
             // 添加超时处理
             const controller = new AbortController();
@@ -65,6 +76,7 @@ async function handleApiRequest(url) {
                 return JSON.stringify({
                     code: 200,
                     list: data.list || [],
+                    pagecount: data.pagecount || 1,
                 });
             } catch (fetchError) {
                 clearTimeout(timeoutId);
@@ -76,13 +88,14 @@ async function handleApiRequest(url) {
         if (url.pathname === '/api/detail') {
             const id = url.searchParams.get('id');
             const sourceCode = url.searchParams.get('source') || 'heimuer'; // 获取源代码
+            const isSpecialSource = sourceCode !== 'custom' && window.getSpecialSourceConfig && window.getSpecialSourceConfig(sourceCode);
             
             if (!id) {
                 throw new Error('缺少视频ID参数');
             }
-            
-            // 验证ID格式 - 只允许数字和有限的特殊字符
-            if (!/^[\w-]+$/.test(id)) {
+
+            // 特殊源的标识符可能包含空格、冒号等字符，不能用通用的数字 ID 规则拦截
+            if (!isSpecialSource && !/^[\w-]+$/.test(id)) {
                 throw new Error('无效的视频ID格式');
             }
 
@@ -93,6 +106,10 @@ async function handleApiRequest(url) {
             
             if (!API_SITES[sourceCode] && sourceCode !== 'custom') {
                 throw new Error('无效的API来源');
+            }
+
+            if (isSpecialSource && window.fetchSpecialSourceDetail) {
+                return JSON.stringify(await window.fetchSpecialSourceDetail(sourceCode, id));
             }
 
             // 对于有detail参数的源，都使用特殊处理方式
@@ -359,7 +376,7 @@ async function handleSpecialSourceDetail(id, sourceCode) {
 async function handleAggregatedSearch(searchQuery) {
     // 获取可用的API源列表（排除aggregated和custom）
     const availableSources = Object.keys(API_SITES).filter(key => 
-        key !== 'aggregated' && key !== 'custom'
+        key !== 'aggregated' && key !== 'custom' && API_SITES[key] && API_SITES[key].api
     );
     
     if (availableSources.length === 0) {
