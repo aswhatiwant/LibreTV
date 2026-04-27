@@ -97,9 +97,9 @@ function initAPICheckboxes() {
         const checkbox = document.createElement('div');
         checkbox.className = 'flex items-center';
         checkbox.innerHTML = `
-            <input type="checkbox" id="api_${apiKey}" 
-                   class="form-checkbox h-3 w-3 text-blue-600 bg-[#222] border border-[#333]" 
-                   ${checked ? 'checked' : ''} 
+            <input type="checkbox" id="api_${apiKey}"
+                   class="form-checkbox h-3 w-3 text-blue-600 bg-[#222] border border-[#333]"
+                   ${checked ? 'checked' : ''}
                    data-api="${apiKey}">
             <label for="api_${apiKey}" class="ml-1 text-xs text-gray-400 truncate">${api.name}</label>
         `;
@@ -149,9 +149,9 @@ function addAdultAPI() {
             const checkbox = document.createElement('div');
             checkbox.className = 'flex items-center';
             checkbox.innerHTML = `
-                <input type="checkbox" id="api_${apiKey}" 
-                       class="form-checkbox h-3 w-3 text-blue-600 bg-[#222] border border-[#333] api-adult" 
-                       ${checked ? 'checked' : ''} 
+                <input type="checkbox" id="api_${apiKey}"
+                       class="form-checkbox h-3 w-3 text-blue-600 bg-[#222] border border-[#333] api-adult"
+                       ${checked ? 'checked' : ''}
                        data-api="${apiKey}">
                 <label for="api_${apiKey}" class="ml-1 text-xs text-pink-400 truncate">${api.name}</label>
             `;
@@ -238,9 +238,9 @@ function renderCustomAPIsList() {
         const detailLine = api.detail ? `<div class="text-xs text-gray-400 truncate">detail: ${api.detail}</div>` : '';
         apiItem.innerHTML = `
             <div class="flex items-center flex-1 min-w-0">
-                <input type="checkbox" id="custom_api_${index}" 
-                       class="form-checkbox h-3 w-3 text-blue-600 mr-1 ${api.isAdult ? 'api-adult' : ''}" 
-                       ${selectedAPIs.includes('custom_' + index) ? 'checked' : ''} 
+                <input type="checkbox" id="custom_api_${index}"
+                       class="form-checkbox h-3 w-3 text-blue-600 mr-1 ${api.isAdult ? 'api-adult' : ''}"
+                       ${selectedAPIs.includes('custom_' + index) ? 'checked' : ''}
                        data-custom-index="${index}">
                 <div class="flex-1 min-w-0">
                     <div class="text-xs font-medium ${textColorClass} truncate">
@@ -654,7 +654,7 @@ async function search() {
 
         // 从所有选中的API源搜索
         let allResults = [];
-        const searchPromises = selectedAPIs.map(apiId => 
+        const searchPromises = selectedAPIs.map(apiId =>
             searchByAPIAndKeyWord(apiId, query)
         );
 
@@ -673,7 +673,7 @@ async function search() {
             // 首先按照视频名称排序
             const nameCompare = (a.vod_name || '').localeCompare(b.vod_name || '');
             if (nameCompare !== 0) return nameCompare;
-            
+
             // 如果名称相同，则按照来源排序
             return (a.source_name || '').localeCompare(b.source_name || '');
         });
@@ -702,7 +702,7 @@ async function search() {
             resultsDiv.innerHTML = `
                 <div class="col-span-full text-center py-16">
                     <svg class="mx-auto h-12 w-12 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                               d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                     <h3 class="mt-2 text-lg font-medium text-gray-400">没有找到匹配的结果</h3>
@@ -769,22 +769,22 @@ async function search() {
             const posterFallback = getDefaultPosterDataUrl();
 
             return `
-                <div class="card-hover bg-[#111] rounded-lg overflow-hidden cursor-pointer transition-all hover:scale-[1.02] h-full shadow-sm hover:shadow-md" 
+                <div class="card-hover bg-[#111] rounded-lg overflow-hidden cursor-pointer transition-all hover:scale-[1.02] h-full shadow-sm hover:shadow-md"
                      onclick="showDetails(${clickId},${clickName},${clickSource})" ${apiUrlAttr}>
                     <div class="flex h-full">
                         ${hasCover ? `
                         <div class="relative flex-shrink-0 search-card-img-container">
                             <img src="${proxiedCoverUrl}" alt="${safeName}"
-                                 class="h-full w-full object-cover transition-transform hover:scale-110" 
+                                 class="h-full w-full object-cover transition-transform hover:scale-110"
                                  onerror="this.onerror=null; this.src='${coverUrl || posterFallback}'; this.classList.add('object-contain');"
                                  loading="lazy">
                             <div class="absolute inset-0 bg-gradient-to-r from-black/30 to-transparent"></div>
                         </div>` : ''}
-                        
+
                         <div class="p-2 flex flex-col flex-grow">
                             <div class="flex-grow">
                                 <h3 class="font-semibold mb-2 break-words line-clamp-2 ${hasCover ? '' : 'text-center'}" title="${safeName}">${safeName}</h3>
-                                
+
                                 <div class="flex flex-wrap ${hasCover ? '' : 'justify-center'} gap-1 mb-2">
                                     ${(item.type_name || '').toString().replace(/</g, '&lt;') ?
                     `<span class="text-xs py-0.5 px-1.5 rounded bg-opacity-20 bg-blue-500 text-blue-300">
@@ -799,7 +799,7 @@ async function search() {
                                     ${(item.vod_remarks || '暂无介绍').toString().replace(/</g, '&lt;')}
                                 </p>
                             </div>
-                            
+
                             <div class="flex justify-between items-center mt-1 pt-1 border-t border-gray-800">
                                 ${sourceInfo ? `<div>${sourceInfo}</div>` : '<div></div>'}
                                 <!-- 接口名称过长会被挤变形
@@ -973,7 +973,7 @@ async function showDetails(id, vod_name, sourceCode) {
                 ${detailInfoHtml}
                 <div class="flex flex-wrap items-center justify-between mb-4 gap-2">
                     <div class="flex items-center gap-2">
-                        <button onclick="toggleEpisodeOrder('${sourceCode}', '${id}')" 
+                        <button onclick="toggleEpisodeOrder(${JSON.stringify(sourceCode)}, ${JSON.stringify(id)})"
                                 class="px-3 py-1.5 bg-[#333] hover:bg-[#444] border border-[#444] rounded text-sm transition-colors flex items-center gap-1">
                             <svg class="w-4 h-4 transform ${episodesReversed ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
@@ -1122,8 +1122,12 @@ function renderEpisodes(vodName, sourceCode, vodId) {
     return episodes.map((episode, index) => {
         // 根据倒序状态计算真实的剧集索引
         const realIndex = episodesReversed ? currentEpisodes.length - 1 - index : index;
+        const clickEpisode = JSON.stringify(episode || '');
+        const clickName = JSON.stringify(vodName || '未知视频');
+        const clickSource = JSON.stringify(sourceCode || '');
+        const clickVodId = JSON.stringify(vodId || '');
         return `
-            <button id="episode-${realIndex}" onclick="playVideo('${episode}','${vodName.replace(/"/g, '&quot;')}', '${sourceCode}', ${realIndex}, '${vodId}')" 
+            <button id="episode-${realIndex}" onclick="playVideo(${clickEpisode}, ${clickName}, ${clickSource}, ${realIndex}, ${clickVodId})"
                     class="px-4 py-2 bg-[#222] hover:bg-[#333] border border-[#333] rounded-lg transition-colors text-center episode-btn">
                 ${realIndex + 1}
             </button>
@@ -1152,7 +1156,7 @@ function toggleEpisodeOrder(sourceCode, vodId) {
     }
 
     // 更新按钮文本和箭头方向
-    const toggleBtn = document.querySelector(`button[onclick="toggleEpisodeOrder('${sourceCode}', '${vodId}')"]`);
+    const toggleBtn = document.querySelector('button[onclick^="toggleEpisodeOrder("]');
     if (toggleBtn) {
         toggleBtn.querySelector('span').textContent = episodesReversed ? '正序排列' : '倒序排列';
         const arrowIcon = toggleBtn.querySelector('svg');
@@ -1177,14 +1181,14 @@ async function importConfigFromUrl() {
     modal.innerHTML = `
         <div class="bg-[#191919] rounded-lg p-6 max-w-md w-full max-h-[90vh] overflow-y-auto relative">
             <button id="closeUrlModal" class="absolute top-4 right-4 text-gray-400 hover:text-white text-xl">&times;</button>
-            
+
             <h3 class="text-xl font-bold mb-4">从URL导入配置</h3>
-            
+
             <div class="mb-4">
-                <input type="text" id="configUrl" placeholder="输入配置文件URL" 
+                <input type="text" id="configUrl" placeholder="输入配置文件URL"
                        class="w-full px-3 py-2 bg-[#222] border border-[#333] rounded-lg text-white focus:outline-none focus:ring-1 focus:ring-blue-500">
             </div>
-            
+
             <div class="flex justify-end space-x-2">
                 <button id="confirmUrlImport" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">导入</button>
                 <button id="cancelUrlImport" class="bg-[#444] hover:bg-[#555] text-white px-4 py-2 rounded">取消</button>
