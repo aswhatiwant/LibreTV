@@ -775,7 +775,7 @@ function getVideoType(url) {
     }
 
     if (/\.(mp4|webm|m4v|mov)(\?|#|$)/i.test(url)) {
-        return 'auto';
+        return '';
     }
 
     return 'm3u8';
