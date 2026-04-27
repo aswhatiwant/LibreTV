@@ -14,6 +14,18 @@ let currentVideoTitle = '';
 // 全局变量用于倒序状态
 let episodesReversed = false;
 
+function encodeDataAttr(value) {
+    return encodeURIComponent(String(value || ''));
+}
+
+function decodeDataAttr(value) {
+    try {
+        return decodeURIComponent(value || '');
+    } catch (error) {
+        return value || '';
+    }
+}
+
 // 页面初始化
 document.addEventListener('DOMContentLoaded', function () {
     // 初始化API复选框
@@ -517,6 +529,49 @@ function setupEventListeners() {
         }
     });
 
+    const results = document.getElementById('results');
+    if (results) {
+        results.addEventListener('click', function (e) {
+            const card = e.target.closest('[data-result-card]');
+            if (!card) {
+                return;
+            }
+
+            showDetails(
+                decodeDataAttr(card.dataset.vodId),
+                decodeDataAttr(card.dataset.vodName),
+                decodeDataAttr(card.dataset.sourceCode)
+            );
+        });
+    }
+
+    const modalContent = document.getElementById('modalContent');
+    if (modalContent) {
+        modalContent.addEventListener('click', function (e) {
+            const orderButton = e.target.closest('[data-episode-order]');
+            if (orderButton) {
+                toggleEpisodeOrder(
+                    decodeDataAttr(orderButton.dataset.sourceCode),
+                    decodeDataAttr(orderButton.dataset.vodId)
+                );
+                return;
+            }
+
+            const episodeButton = e.target.closest('[data-episode-button]');
+            if (!episodeButton) {
+                return;
+            }
+
+            playVideo(
+                decodeDataAttr(episodeButton.dataset.episodeUrl),
+                decodeDataAttr(episodeButton.dataset.vodName),
+                decodeDataAttr(episodeButton.dataset.sourceCode),
+                parseInt(episodeButton.dataset.episodeIndex || '0', 10),
+                decodeDataAttr(episodeButton.dataset.vodId)
+            );
+        });
+    }
+
     // 点击外部关闭设置面板和历史记录面板
     document.addEventListener('click', function (e) {
         // 关闭设置面板
@@ -746,9 +801,6 @@ async function search() {
                 .replace(/</g, '&lt;')
                 .replace(/>/g, '&gt;')
                 .replace(/"/g, '&quot;');
-            const clickId = JSON.stringify(item.vod_id ? item.vod_id.toString() : '');
-            const clickName = JSON.stringify(item.vod_name || '未知视频');
-            const clickSource = JSON.stringify(item.source_code || '');
             const sourceInfo = item.source_name ?
                 `<span class="bg-[#222] text-xs px-1.5 py-0.5 rounded-full">${item.source_name}</span>` : '';
             const sourceCode = item.source_code || '';
@@ -770,7 +822,11 @@ async function search() {
 
             return `
                 <div class="card-hover bg-[#111] rounded-lg overflow-hidden cursor-pointer transition-all hover:scale-[1.02] h-full shadow-sm hover:shadow-md"
-                     onclick="showDetails(${clickId},${clickName},${clickSource})" ${apiUrlAttr}>
+                     data-result-card="1"
+                     data-vod-id="${encodeDataAttr(item.vod_id ? item.vod_id.toString() : '')}"
+                     data-vod-name="${encodeDataAttr(item.vod_name || '未知视频')}"
+                     data-source-code="${encodeDataAttr(item.source_code || '')}"
+                     ${apiUrlAttr}>
                     <div class="flex h-full">
                         ${hasCover ? `
                         <div class="relative flex-shrink-0 search-card-img-container">
@@ -973,7 +1029,9 @@ async function showDetails(id, vod_name, sourceCode) {
                 ${detailInfoHtml}
                 <div class="flex flex-wrap items-center justify-between mb-4 gap-2">
                     <div class="flex items-center gap-2">
-                        <button onclick="toggleEpisodeOrder(${JSON.stringify(sourceCode)}, ${JSON.stringify(id)})"
+                        <button data-episode-order="1"
+                                data-source-code="${encodeDataAttr(sourceCode)}"
+                                data-vod-id="${encodeDataAttr(id)}"
                                 class="px-3 py-1.5 bg-[#333] hover:bg-[#444] border border-[#444] rounded text-sm transition-colors flex items-center gap-1">
                             <svg class="w-4 h-4 transform ${episodesReversed ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
@@ -1122,12 +1180,14 @@ function renderEpisodes(vodName, sourceCode, vodId) {
     return episodes.map((episode, index) => {
         // 根据倒序状态计算真实的剧集索引
         const realIndex = episodesReversed ? currentEpisodes.length - 1 - index : index;
-        const clickEpisode = JSON.stringify(episode || '');
-        const clickName = JSON.stringify(vodName || '未知视频');
-        const clickSource = JSON.stringify(sourceCode || '');
-        const clickVodId = JSON.stringify(vodId || '');
         return `
-            <button id="episode-${realIndex}" onclick="playVideo(${clickEpisode}, ${clickName}, ${clickSource}, ${realIndex}, ${clickVodId})"
+            <button id="episode-${realIndex}"
+                    data-episode-button="1"
+                    data-episode-url="${encodeDataAttr(episode || '')}"
+                    data-vod-name="${encodeDataAttr(vodName || '未知视频')}"
+                    data-source-code="${encodeDataAttr(sourceCode || '')}"
+                    data-episode-index="${realIndex}"
+                    data-vod-id="${encodeDataAttr(vodId || '')}"
                     class="px-4 py-2 bg-[#222] hover:bg-[#333] border border-[#333] rounded-lg transition-colors text-center episode-btn">
                 ${realIndex + 1}
             </button>
@@ -1156,7 +1216,7 @@ function toggleEpisodeOrder(sourceCode, vodId) {
     }
 
     // 更新按钮文本和箭头方向
-    const toggleBtn = document.querySelector('button[onclick^="toggleEpisodeOrder("]');
+    const toggleBtn = document.querySelector('[data-episode-order]');
     if (toggleBtn) {
         toggleBtn.querySelector('span').textContent = episodesReversed ? '正序排列' : '倒序排列';
         const arrowIcon = toggleBtn.querySelector('svg');
