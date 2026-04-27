@@ -5,6 +5,10 @@ const MAGIC_DEFAULT_APIS = ["bfzy", "ruyi", "ffzy", "jisu", "zuid", "lzi", "dbzy
 let selectedAPIs = JSON.parse(localStorage.getItem('selectedAPIs') || JSON.stringify(CURRENT_DEFAULT_SELECTED_APIS)); // 默认选中资源
 let customAPIs = JSON.parse(localStorage.getItem('customAPIs') || '[]'); // 存储自定义API列表
 
+function isValidApiId(apiId) {
+    return !!API_SITES[apiId] || /^custom_\d+$/.test(apiId);
+}
+
 // 添加当前播放的集数索引
 let currentEpisodeIndex = 0;
 // 添加当前视频的所有集数
@@ -63,6 +67,12 @@ document.addEventListener('DOMContentLoaded', function () {
     const mergedSelectedAPIs = [...new Set([...selectedAPIs, ...MAGIC_DEFAULT_APIS])];
     if (mergedSelectedAPIs.length !== selectedAPIs.length) {
         selectedAPIs = mergedSelectedAPIs;
+        localStorage.setItem('selectedAPIs', JSON.stringify(selectedAPIs));
+    }
+
+    const validSelectedAPIs = selectedAPIs.filter(isValidApiId);
+    if (validSelectedAPIs.length !== selectedAPIs.length) {
+        selectedAPIs = validSelectedAPIs;
         localStorage.setItem('selectedAPIs', JSON.stringify(selectedAPIs));
     }
 
