@@ -16,7 +16,7 @@ const SITE_CONFIG = {
     name: 'LibreTV',
     url: 'https://libretv.is-an.org',
     description: '免费在线视频搜索与观看平台',
-    logo: 'image/logo.png?v=20260427-coverfix',
+    logo: 'image/logo.png?v=20260427-poster',
     version: '1.0.3'
 };
 
@@ -213,7 +213,30 @@ function normalizeMediaUrl(rawUrl, baseUrl = '') {
 }
 
 function getDefaultPosterDataUrl() {
-    return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjQ1MCIgdmlld0JveD0iMCAwIDMwMCA0NTAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjMwMCIgaGVpZ2h0PSI0NTAiIGZpbGw9IiMxMTEiLz48cmVjdCB4PSI0MCIgeT0iNjAiIHdpZHRoPSIyMjAiIGhlaWdodD0iMzMwIiByeD0iMjQiIGZpbGw9IiMxYjFiMWIiIHN0cm9rZT0iIzMzMyIvPjxwYXRoIGQ9Ik0xMDAgMTkwbDYwLTQwcDYwIDQwIiBzdHJva2U9IiM2NjYiIHN0cm9rZS13aWR0aD0iMTIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgZmlsbD0ibm9uZSIvPjxwYXRoIGQ9Ik0xMDAgMjYwaDkwIiBzdHJva2U9IiM2NjYiIHN0cm9rZS13aWR0aD0iMTIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjx0ZXh0IHg9IjE1MCIgeT0iMzQwIiBmaWxsPSIjOTk5IiBmb250LXNpemU9IjI0IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0ic3lzdGVtLXVpLC1hcHBsZS1zeXN0ZW0sU2Vnb2UgVUksUm9ib3RvLEFyaWFsIj7ov5HmiqXkvJrlkKc8L3RleHQ+PC9zdmc+';
+    const svg = `
+        <svg width="300" height="450" viewBox="0 0 300 450" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0%" stop-color="#162235"/>
+                    <stop offset="55%" stop-color="#0d1522"/>
+                    <stop offset="100%" stop-color="#080c13"/>
+                </linearGradient>
+                <linearGradient id="card" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0%" stop-color="#24344d"/>
+                    <stop offset="100%" stop-color="#111827"/>
+                </linearGradient>
+            </defs>
+            <rect width="300" height="450" fill="url(#bg)"/>
+            <rect x="34" y="44" width="232" height="362" rx="28" fill="url(#card)" stroke="#39506f" stroke-width="2"/>
+            <circle cx="150" cy="168" r="54" fill="#23344f" stroke="#5a7397" stroke-width="4"/>
+            <path d="M128 156l24 24 42-56" fill="none" stroke="#9fb4d3" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+            <rect x="78" y="260" width="144" height="12" rx="6" fill="#5a7397" opacity="0.55"/>
+            <rect x="98" y="290" width="104" height="10" rx="5" fill="#5a7397" opacity="0.35"/>
+            <text x="150" y="344" fill="#d6e3f5" font-size="28" font-weight="700" text-anchor="middle" font-family="system-ui,-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif">暂无封面</text>
+            <text x="150" y="376" fill="#7f93b1" font-size="18" text-anchor="middle" font-family="system-ui,-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif">LibreTV</text>
+        </svg>
+    `;
+    return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
 }
 
 function isKnownBlockedCoverUrl(url) {
