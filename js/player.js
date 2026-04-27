@@ -1743,15 +1743,20 @@ async function showSwitchResourceModal() {
         const speedResult = speedResults[sourceKey] || { speed: -1, error: '未测试' };
         const clickSourceKey = JSON.stringify(sourceKey);
         const clickVodId = JSON.stringify(result.vod_id ? String(result.vod_id) : '');
+        const coverUrl = normalizeMediaUrl(result.vod_pic, API_SITES[sourceKey]?.api || '');
+        const posterFallback = getDefaultPosterDataUrl();
+        const coverSrc = window.isKnownBlockedCoverUrl?.(coverUrl)
+            ? posterFallback
+            : ProxyAuth?.buildProxyUrlSync ? ProxyAuth.buildProxyUrlSync(coverUrl) : coverUrl;
         
         html += `
             <div class="relative group ${isCurrentSource ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:scale-105 transition-transform'}" 
                  ${!isCurrentSource ? `onclick="switchToResource(${clickSourceKey}, ${clickVodId})"` : ''}>
                 <div class="aspect-[2/3] rounded-lg overflow-hidden bg-gray-800 relative">
-                    <img src="${ProxyAuth?.buildProxyUrlSync ? ProxyAuth.buildProxyUrlSync(normalizeMediaUrl(result.vod_pic, API_SITES[sourceKey]?.api || '')) : normalizeMediaUrl(result.vod_pic, API_SITES[sourceKey]?.api || '')}"
+                    <img src="${coverSrc}"
                          alt="${result.vod_name}"
                          class="w-full h-full object-cover"
-                         onerror="this.src='${getDefaultPosterDataUrl()}'">
+                         onerror="this.src='${posterFallback}'">
                     
                     <!-- 速率显示在图片右上角 -->
                     <div class="absolute top-1 right-1 speed-badge bg-black bg-opacity-75">

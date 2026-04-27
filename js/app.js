@@ -824,11 +824,13 @@ async function search() {
                 ? item.api_url
                 : (API_SITES[sourceCode] && API_SITES[sourceCode].api) || '';
             const coverUrl = normalizeMediaUrl(item.vod_pic, sourceApi);
-            const proxiedCoverUrl = ProxyAuth?.buildProxyUrlSync
+            const posterFallback = getDefaultPosterDataUrl();
+            const proxiedCoverUrl = window.isKnownBlockedCoverUrl?.(coverUrl)
+                ? posterFallback
+                : ProxyAuth?.buildProxyUrlSync
                 ? ProxyAuth.buildProxyUrlSync(coverUrl)
                 : `${PROXY_URL}${encodeURIComponent(coverUrl)}`;
             const hasCover = !!proxiedCoverUrl;
-            const posterFallback = getDefaultPosterDataUrl();
 
             return `
                 <div class="card-hover bg-[#111] rounded-lg overflow-hidden cursor-pointer transition-all hover:scale-[1.02] h-full shadow-sm hover:shadow-md"
@@ -842,7 +844,7 @@ async function search() {
                         <div class="relative flex-shrink-0 search-card-img-container">
                             <img src="${proxiedCoverUrl}" alt="${safeName}"
                                  class="h-full w-full object-cover transition-transform hover:scale-110"
-                                 onerror="this.onerror=null; this.src='${coverUrl || posterFallback}'; this.classList.add('object-contain');"
+                                 onerror="this.onerror=null; this.src='${posterFallback}'; this.classList.add('object-contain');"
                                  loading="lazy">
                             <div class="absolute inset-0 bg-gradient-to-r from-black/30 to-transparent"></div>
                         </div>` : ''}

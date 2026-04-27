@@ -16,7 +16,7 @@ const SITE_CONFIG = {
     name: 'LibreTV',
     url: 'https://libretv.is-an.org',
     description: '免费在线视频搜索与观看平台',
-    logo: 'image/logo.png?v=20260427-sourceclean',
+    logo: 'image/logo.png?v=20260427-coverfix',
     version: '1.0.3'
 };
 
@@ -216,6 +216,15 @@ function getDefaultPosterDataUrl() {
     return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjQ1MCIgdmlld0JveD0iMCAwIDMwMCA0NTAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjMwMCIgaGVpZ2h0PSI0NTAiIGZpbGw9IiMxMTEiLz48cmVjdCB4PSI0MCIgeT0iNjAiIHdpZHRoPSIyMjAiIGhlaWdodD0iMzMwIiByeD0iMjQiIGZpbGw9IiMxYjFiMWIiIHN0cm9rZT0iIzMzMyIvPjxwYXRoIGQ9Ik0xMDAgMTkwbDYwLTQwcDYwIDQwIiBzdHJva2U9IiM2NjYiIHN0cm9rZS13aWR0aD0iMTIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgZmlsbD0ibm9uZSIvPjxwYXRoIGQ9Ik0xMDAgMjYwaDkwIiBzdHJva2U9IiM2NjYiIHN0cm9rZS13aWR0aD0iMTIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjx0ZXh0IHg9IjE1MCIgeT0iMzQwIiBmaWxsPSIjOTk5IiBmb250LXNpemU9IjI0IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0ic3lzdGVtLXVpLC1hcHBsZS1zeXN0ZW0sU2Vnb2UgVUksUm9ib3RvLEFyaWFsIj7ov5HmiqXkvJrlkKc8L3RleHQ+PC9zdmc+';
 }
 
+function isKnownBlockedCoverUrl(url) {
+    try {
+        const { hostname } = new URL(url);
+        return hostname === 'www.imgzy360.com' || hostname === 'imgzy360.com';
+    } catch (error) {
+        return false;
+    }
+}
+
 // 添加多个自定义API源的配置
 const CUSTOM_API_CONFIG = {
     separator: ',',           // 分隔符
@@ -233,6 +242,7 @@ const HIDE_BUILTIN_ADULT_APIS = false;
 
 window.normalizeMediaUrl = normalizeMediaUrl;
 window.getDefaultPosterDataUrl = getDefaultPosterDataUrl;
+window.isKnownBlockedCoverUrl = isKnownBlockedCoverUrl;
 
 function escapeApiQueryTerm(value) {
     return String(value || '').replace(/[\\"]/g, ' ').trim();
