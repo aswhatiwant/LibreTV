@@ -1,4 +1,4 @@
-const MAGIC_DEFAULT_APIS = ["ia_pd", "ia_cc", "commons_video", "superembed"];
+const MAGIC_DEFAULT_APIS = ["bfzy", "ruyi", "ffzy", "jisu", "zuid", "lzi", "dbzy", "wolong", "wujin", "ikun", "dyttzy", "zy360", "mdzy", "baidu", "ia_pd", "ia_cc", "commons_video", "superembed"];
 const selectedAPIs = [...new Set(JSON.parse(localStorage.getItem('selectedAPIs') || '[]').concat(MAGIC_DEFAULT_APIS))];
 const customAPIs = JSON.parse(localStorage.getItem('customAPIs') || '[]'); // 存储自定义API列表
 

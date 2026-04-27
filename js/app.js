@@ -1,7 +1,7 @@
 // 全局变量
 const LEGACY_DEFAULT_SELECTED_APIS = ["tyyszy", "dyttzy", "bfzy", "ruyi"];
-const CURRENT_DEFAULT_SELECTED_APIS = ["tyyszy", "bfzy", "dyttzy", "ruyi", "ia_pd", "ia_cc", "commons_video"];
-const MAGIC_DEFAULT_APIS = ["ia_pd", "ia_cc", "commons_video", "superembed"];
+const CURRENT_DEFAULT_SELECTED_APIS = ["bfzy", "ruyi", "ffzy", "jisu", "zuid", "lzi", "dbzy", "wolong", "wujin", "ikun", "dyttzy", "zy360", "mdzy", "baidu", "ia_pd", "ia_cc", "commons_video", "superembed"];
+const MAGIC_DEFAULT_APIS = ["bfzy", "ruyi", "ffzy", "jisu", "zuid", "lzi", "dbzy", "wolong", "wujin", "ikun", "dyttzy", "zy360", "mdzy", "baidu", "ia_pd", "ia_cc", "commons_video", "superembed"];
 let selectedAPIs = JSON.parse(localStorage.getItem('selectedAPIs') || JSON.stringify(CURRENT_DEFAULT_SELECTED_APIS)); // 默认选中资源
 let customAPIs = JSON.parse(localStorage.getItem('customAPIs') || '[]'); // 存储自定义API列表
 
