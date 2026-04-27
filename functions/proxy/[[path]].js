@@ -49,6 +49,7 @@ export async function onRequest(context) {
     const DEBUG_ENABLED = (env.DEBUG === 'true');
     const CACHE_TTL = parseInt(env.CACHE_TTL || '86400'); // 默认 24 小时
     const MAX_RECURSION = parseInt(env.MAX_RECURSION || '5'); // 默认 5 层
+    const proxyAuthHash = env.PASSWORD ? await getServerPasswordHash(env.PASSWORD) : '';
     // 广告过滤已移至播放器处理，代理不再执行
     let USER_AGENTS = [ // 提供一个基础的默认值
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
@@ -85,15 +86,8 @@ export async function onRequest(context) {
             return false;
         }
         
-        // 使用 SHA-256 哈希算法（与其他平台保持一致）
-        // 在 Cloudflare Workers 中使用 crypto.subtle
         try {
-            const encoder = new TextEncoder();
-            const data = encoder.encode(serverPassword);
-            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-            const hashArray = Array.from(new Uint8Array(hashBuffer));
-            const serverPasswordHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-            
+            const serverPasswordHash = await getServerPasswordHash(serverPassword);
             if (!authHash || authHash !== serverPasswordHash) {
                 console.warn('代理请求鉴权失败：密码哈希不匹配');
                 return false;
@@ -116,8 +110,16 @@ export async function onRequest(context) {
         return true;
     }
 
+    async function getServerPasswordHash(serverPassword) {
+        const encoder = new TextEncoder();
+        const data = encoder.encode(serverPassword);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
     // 验证鉴权（主函数调用）
-    if (!validateAuth(request, env)) {
+    if (!await validateAuth(request, env)) {
         return new Response('Unauthorized', { 
             status: 401,
             headers: {
@@ -243,7 +245,7 @@ export async function onRequest(context) {
     // 将目标 URL 重写为内部代理路径 (/proxy/...)
     function rewriteUrlToProxy(targetUrl) {
         // 确保目标URL被正确编码，以便作为路径的一部分
-        return `/proxy/${encodeURIComponent(targetUrl)}`;
+        return `/proxy/${encodeURIComponent(targetUrl)}?auth=${encodeURIComponent(proxyAuthHash)}&t=${Date.now()}`;
     }
 
     // 获取远程内容及其类型

@@ -166,21 +166,7 @@ async function handleApiRequest(url) {
                 let episodes = [];
                 
                 if (videoDetail.vod_play_url) {
-                    // 分割不同播放源
-                    const playSources = videoDetail.vod_play_url.split('$$$');
-                    
-                    // 提取第一个播放源的集数（通常为主要源）
-                    if (playSources.length > 0) {
-                        const mainSource = playSources[0];
-                        const episodeList = mainSource.split('#');
-                        
-                        // 从每个集数中提取URL
-                        episodes = episodeList.map(ep => {
-                            const parts = ep.split('$');
-                            // 返回URL部分(通常是第二部分，如果有的话)
-                            return parts.length > 1 ? parts[1] : '';
-                        }).filter(url => url && (url.startsWith('http://') || url.startsWith('https://')));
-                    }
+                    episodes = extractPlayableEpisodes(videoDetail.vod_play_url);
                 }
                 
                 // 如果没有找到播放地址，尝试使用正则表达式查找m3u8链接
@@ -224,6 +210,41 @@ async function handleApiRequest(url) {
             episodes: [],
         });
     }
+}
+
+function isDirectPlayableUrl(url) {
+    return /\.(m3u8|mp4|webm|m4v|mov)(\?|#|$)/i.test(url);
+}
+
+function extractEpisodeUrls(playSource) {
+    return playSource.split('#').map(ep => {
+        const parts = ep.split('$');
+        return parts.length > 1 ? parts.slice(1).join('$').trim() : '';
+    }).filter(url => url && /^https?:\/\//i.test(url));
+}
+
+function extractPlayableEpisodes(vodPlayUrl) {
+    const groups = String(vodPlayUrl || '').split('$$$')
+        .map(extractEpisodeUrls)
+        .filter(urls => urls.length > 0);
+
+    if (groups.length === 0) {
+        return [];
+    }
+
+    const directGroups = groups
+        .map(urls => ({
+            urls: urls.filter(isDirectPlayableUrl),
+            m3u8Count: urls.filter(url => /\.m3u8(\?|#|$)/i.test(url)).length
+        }))
+        .filter(group => group.urls.length > 0)
+        .sort((a, b) => (b.m3u8Count - a.m3u8Count) || (b.urls.length - a.urls.length));
+
+    if (directGroups.length > 0) {
+        return directGroups[0].urls;
+    }
+
+    return groups[0];
 }
 
 // 处理自定义API的特殊详情页

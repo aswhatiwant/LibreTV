@@ -410,6 +410,9 @@ function initPlayer(videoUrl) {
         return;
     }
 
+    const playbackUrl = getPlaybackUrl(videoUrl);
+    const videoType = getVideoType(videoUrl);
+
     // 销毁旧实例
     if (art) {
         art.destroy();
@@ -448,8 +451,8 @@ function initPlayer(videoUrl) {
     // Create new ArtPlayer instance
     art = new Artplayer({
         container: '#player',
-        url: videoUrl,
-        type: 'm3u8',
+        url: playbackUrl,
+        type: videoType,
         title: videoTitle,
         volume: 0.8,
         isLive: false,
@@ -525,11 +528,11 @@ function initPlayer(videoUrl) {
                 let sourceElement = video.querySelector('source');
                 if (sourceElement) {
                     // 更新现有source元素的URL
-                    sourceElement.src = videoUrl;
+                    sourceElement.src = url;
                 } else {
                     // 创建新的source元素
                     sourceElement = document.createElement('source');
-                    sourceElement.src = videoUrl;
+                    sourceElement.src = url;
                     video.appendChild(sourceElement);
                 }
                 video.disableRemotePlayback = false;
@@ -764,6 +767,31 @@ function initPlayer(videoUrl) {
             `;
         }
     }, 10000);
+}
+
+function getVideoType(url) {
+    if (/\.m3u8(\?|#|$)/i.test(url)) {
+        return 'm3u8';
+    }
+
+    if (/\.(mp4|webm|m4v|mov)(\?|#|$)/i.test(url)) {
+        return 'auto';
+    }
+
+    return 'm3u8';
+}
+
+function getPlaybackUrl(url) {
+    const normalizedUrl = window.normalizeMediaUrl ? window.normalizeMediaUrl(url) : url;
+    if (!normalizedUrl || !/^https?:\/\//i.test(normalizedUrl)) {
+        return normalizedUrl;
+    }
+
+    if (/\.m3u8(\?|#|$)/i.test(normalizedUrl) && window.ProxyAuth?.buildProxyUrlSync) {
+        return window.ProxyAuth.buildProxyUrlSync(normalizedUrl);
+    }
+
+    return normalizedUrl;
 }
 
 // 自定义M3U8 Loader用于过滤广告
