@@ -213,7 +213,7 @@ async function handleApiRequest(url) {
 }
 
 function isDirectPlayableUrl(url) {
-    return /\.(m3u8|mp4|webm|m4v|mov)(\?|#|$)/i.test(url);
+    return /\.(m3u8|mp4|webm|m4v|mov|ogv|ogg)(\?|#|$)/i.test(url);
 }
 
 function extractEpisodeUrls(playSource) {
