@@ -242,6 +242,8 @@ export async function onRequest(context) {
             'Accept': '*/*',
             // 尝试传递一些原始请求的头信息
             'Accept-Language': request.headers.get('Accept-Language') || 'zh-CN,zh;q=0.9,en;q=0.8',
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache',
             // 对代理目标统一使用其自身 origin，避免把页面来源站点当作热链来源
             'Referer': new URL(targetUrl).origin
         });
@@ -281,8 +283,7 @@ export async function onRequest(context) {
 
     async function fetchBrowserVerifiedContent(targetUrl, content, responseHeaders) {
         const contentType = responseHeaders.get('Content-Type') || '';
-        const isBrowserVerify = responseHeaders.get('L-BLOCK') === 'BrowserVerify';
-        if (!isBrowserVerify || !contentType.toLowerCase().includes('text/html')) {
+        if (!contentType.toLowerCase().includes('text/html')) {
             return null;
         }
 
@@ -298,6 +299,8 @@ export async function onRequest(context) {
             'User-Agent': getRandomUserAgent(),
             'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
             'Accept-Language': request.headers.get('Accept-Language') || 'zh-CN,zh;q=0.9,en;q=0.8',
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache',
             'Referer': new URL(targetUrl).origin
         });
 
@@ -307,7 +310,8 @@ export async function onRequest(context) {
         }
 
         const verifiedContentType = verifiedResponse.headers.get('Content-Type') || '';
-        const verifiedIsBinary = isMediaFile(verifiedUrl, verifiedContentType) && !isM3u8Content('', verifiedContentType);
+        const verifiedIsHtml = verifiedContentType.toLowerCase().includes('text/html');
+        const verifiedIsBinary = !verifiedIsHtml && isMediaFile(verifiedUrl, verifiedContentType) && !isM3u8Content('', verifiedContentType);
         const verifiedContent = verifiedIsBinary ? await verifiedResponse.arrayBuffer() : await verifiedResponse.text();
         return {
             content: verifiedContent,
