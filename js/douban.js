@@ -55,6 +55,17 @@ const doubanPageSize = 16; // 一次显示的项目数量
 
 // 初始化豆瓣功能
 function initDouban() {
+    const doubanArea = document.getElementById('doubanArea');
+    if (doubanArea && !doubanArea.dataset.doubanClickBound) {
+        doubanArea.dataset.doubanClickBound = '1';
+        doubanArea.addEventListener('click', function (event) {
+            const searchTarget = event.target.closest('[data-douban-search]');
+            if (!searchTarget) return;
+
+            fillAndSearchWithDouban(decodeURIComponent(searchTarget.dataset.doubanSearch || ''));
+        });
+    }
+
     // 设置豆瓣开关的初始状态
     const doubanToggle = document.getElementById('doubanToggle');
     if (doubanToggle) {
@@ -519,14 +530,10 @@ function renderDoubanCards(data, container) {
             card.className = "bg-[#111] hover:bg-[#222] transition-all duration-300 rounded-lg overflow-hidden flex flex-col transform hover:scale-105 shadow-md hover:shadow-lg";
             
             // 生成卡片内容，确保安全显示（防止XSS）
-            const safeTitle = item.title
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;');
+            const safeTitle = escapeHtml(item.title);
+            const encodedTitle = encodeURIComponent(item.title || '');
             
-            const safeRate = (item.rate || "暂无")
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;');
+            const safeRate = escapeHtml(item.rate || "暂无");
             
             // 处理图片URL
             // 1. 先规范化豆瓣图片地址，兼容协议相对和相对路径
@@ -539,23 +546,24 @@ function renderDoubanCards(data, container) {
             
             // 为不同设备优化卡片布局
             card.innerHTML = `
-                <div class="relative w-full aspect-[2/3] overflow-hidden cursor-pointer" onclick="fillAndSearchWithDouban('${safeTitle}')">
-                    <img src="${proxiedCoverUrl}" alt="${safeTitle}"
+                <div class="relative w-full aspect-[2/3] overflow-hidden cursor-pointer" data-douban-search="${encodedTitle}">
+                    <img src="${escapeHtml(proxiedCoverUrl)}" alt="${safeTitle}"
                         class="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
-                        onerror="this.onerror=null; this.src='${originalCoverUrl}'; this.classList.add('object-contain');"
+                        data-fallback-src="${escapeHtml(originalCoverUrl)}"
+                        onerror="this.onerror=null; this.src=this.dataset.fallbackSrc; this.classList.add('object-contain');"
                         loading="lazy" referrerpolicy="no-referrer">
                     <div class="absolute inset-0 bg-gradient-to-t from-black to-transparent opacity-60"></div>
                     <div class="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded-sm">
                         <span class="text-yellow-400">★</span> ${safeRate}
                     </div>
                     <div class="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded-sm hover:bg-[#333] transition-colors">
-                        <a href="${item.url}" target="_blank" rel="noopener noreferrer" title="在豆瓣查看" onclick="event.stopPropagation();">
+                        <a href="${escapeHtml(item.url || '')}" target="_blank" rel="noopener noreferrer" title="在豆瓣查看" onclick="event.stopPropagation();">
                             🔗
                         </a>
                     </div>
                 </div>
                 <div class="p-2 text-center bg-[#111]">
-                    <button onclick="fillAndSearchWithDouban('${safeTitle}')" 
+                    <button data-douban-search="${encodedTitle}"
                             class="text-sm font-medium text-white truncate w-full hover:text-pink-400 transition"
                             title="${safeTitle}">
                         ${safeTitle}

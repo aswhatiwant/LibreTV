@@ -97,14 +97,13 @@ export async function onRequest(context) {
             return false;
         }
         
-        // 验证时间戳（10分钟有效期）
-        if (timestamp) {
-            const now = Date.now();
-            const maxAge = 10 * 60 * 1000; // 10分钟
-            if (now - parseInt(timestamp) > maxAge) {
-                console.warn('代理请求鉴权失败：时间戳过期');
-                return false;
-            }
+        // 验证时间戳（10分钟有效期），缺失或非法时间戳都拒绝，避免 auth hash 被长期复用。
+        const now = Date.now();
+        const maxAge = 10 * 60 * 1000; // 10分钟
+        const requestTime = Number(timestamp);
+        if (!timestamp || !Number.isFinite(requestTime) || Math.abs(now - requestTime) > maxAge) {
+            console.warn('代理请求鉴权失败：时间戳缺失、非法或过期');
+            return false;
         }
         
         return true;
@@ -116,18 +115,6 @@ export async function onRequest(context) {
         const hashBuffer = await crypto.subtle.digest('SHA-256', data);
         const hashArray = Array.from(new Uint8Array(hashBuffer));
         return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-    }
-
-    // 验证鉴权（主函数调用）
-    if (!await validateAuth(request, env)) {
-        return new Response('Unauthorized', { 
-            status: 401,
-            headers: {
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'GET, HEAD, POST, OPTIONS',
-                'Access-Control-Allow-Headers': '*'
-            }
-        });
     }
 
     // 输出调试日志 (需要设置 DEBUG: true 环境变量)

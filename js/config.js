@@ -4,6 +4,15 @@ const PROXY_URL = '/proxy/';    // 适用于 Cloudflare, Netlify (带重写), Ve
 const SEARCH_HISTORY_KEY = 'videoSearchHistory';
 const MAX_HISTORY_ITEMS = 5;
 
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 // 密码保护配置
 // 注意：PASSWORD 环境变量是必需的，所有部署都必须设置密码以确保安全
 const PASSWORD_CONFIG = {
@@ -450,8 +459,8 @@ function isPlayableArchiveFile(file) {
     const name = String(file?.name || '').toLowerCase();
     const format = String(file?.format || '').toLowerCase();
     return (
-        /\.(mp4|m4v|mkv|webm|ogv|mov|avi|mpg|mpeg|flv|ts)$/.test(name) ||
-        ['h.264', 'h.265', 'mpeg4', 'matroska', 'webm', 'mpeg', 'quicktime', 'ogg video', 'avi'].includes(format)
+        /\.(mp4|m4v|webm|ogv|ogg|mov)$/.test(name) ||
+        ['h.264', 'mpeg4', 'webm', 'quicktime', 'ogg video'].includes(format)
     );
 }
 

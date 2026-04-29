@@ -99,6 +99,15 @@ Artplayer.FULLSCREEN_WEB_IN_BODY = true;
 
 // 页面加载
 document.addEventListener('DOMContentLoaded', function () {
+    document.addEventListener('click', function (event) {
+        const switchCard = event.target.closest('[data-switch-resource]');
+        if (!switchCard) return;
+
+        const sourceKey = decodeURIComponent(switchCard.dataset.switchSource || '');
+        const vodId = decodeURIComponent(switchCard.dataset.switchVodId || '');
+        switchToResource(sourceKey, vodId);
+    });
+
     // 先检查用户是否已通过密码验证
     if (!isPasswordVerified()) {
         // 隐藏加载提示
@@ -1669,7 +1678,7 @@ async function showSwitchResourceModal() {
     const modalTitle = document.getElementById('modalTitle');
     const modalContent = document.getElementById('modalContent');
 
-    modalTitle.innerHTML = `<span class="break-words">${currentVideoTitle}</span>`;
+    modalTitle.innerHTML = `<span class="break-words">${escapeHtml(currentVideoTitle)}</span>`;
     modalContent.innerHTML = '<div style="text-align:center;padding:20px;color:#aaa;grid-column:1/-1;">正在加载资源列表...</div>';
     modal.classList.remove('hidden');
 
@@ -1741,8 +1750,10 @@ async function showSwitchResourceModal() {
         const isCurrentSource = String(sourceKey) === String(currentSourceCode) && String(result.vod_id) === String(currentVideoId);
         const sourceName = resourceOptions.find(opt => opt.key === sourceKey)?.name || '未知资源';
         const speedResult = speedResults[sourceKey] || { speed: -1, error: '未测试' };
-        const clickSourceKey = JSON.stringify(sourceKey);
-        const clickVodId = JSON.stringify(result.vod_id ? String(result.vod_id) : '');
+        const switchAttrs = isCurrentSource ? '' : `
+                 data-switch-resource="1"
+                 data-switch-source="${encodeURIComponent(sourceKey)}"
+                 data-switch-vod-id="${encodeURIComponent(result.vod_id ? String(result.vod_id) : '')}"`;
         const coverUrl = normalizeMediaUrl(result.vod_pic, API_SITES[sourceKey]?.api || '');
         const posterFallback = getDefaultPosterDataUrl();
         const coverSrc = window.isKnownBlockedCoverUrl?.(coverUrl)
@@ -1751,12 +1762,12 @@ async function showSwitchResourceModal() {
         
         html += `
             <div class="relative group ${isCurrentSource ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:scale-105 transition-transform'}" 
-                 ${!isCurrentSource ? `onclick="switchToResource(${clickSourceKey}, ${clickVodId})"` : ''}>
+                 ${switchAttrs}>
                 <div class="aspect-[2/3] rounded-lg overflow-hidden bg-gray-800 relative">
-                    <img src="${coverSrc}"
-                         alt="${result.vod_name}"
+                    <img src="${escapeHtml(coverSrc)}"
+                         alt="${escapeHtml(result.vod_name || '')}"
                          class="w-full h-full object-cover"
-                         onerror="this.src='${posterFallback}'">
+                         onerror="this.src='${escapeHtml(posterFallback)}'">
                     
                     <!-- 速率显示在图片右上角 -->
                     <div class="absolute top-1 right-1 speed-badge bg-black bg-opacity-75">
@@ -1764,8 +1775,8 @@ async function showSwitchResourceModal() {
                     </div>
                 </div>
                 <div class="mt-2">
-                    <div class="text-xs font-medium text-gray-200 truncate">${result.vod_name}</div>
-                    <div class="text-[10px] text-gray-400 truncate">${sourceName}</div>
+                    <div class="text-xs font-medium text-gray-200 truncate">${escapeHtml(result.vod_name || '')}</div>
+                    <div class="text-[10px] text-gray-400 truncate">${escapeHtml(sourceName)}</div>
                     <div class="text-[10px] text-gray-500 mt-1">
                         ${speedResult.episodes ? `${speedResult.episodes}集` : ''}
                     </div>

@@ -393,13 +393,12 @@ function loadViewingHistory() {
     // 渲染历史记录
     historyList.innerHTML = history.map(item => {
         // 防止XSS
-        const safeTitle = item.title
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;');
+        const rawTitle = item.title || '';
+        const rawUrl = item.url || '';
+        const safeTitle = escapeHtml(rawTitle);
 
         const safeSource = item.sourceName ?
-            item.sourceName.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;') :
+            escapeHtml(item.sourceName) :
             '未知来源';
 
         const episodeText = item.episodeIndex !== undefined ?
@@ -432,13 +431,20 @@ function loadViewingHistory() {
             `;
         }
 
-        // 为防止XSS，使用encodeURIComponent编码URL
-        const safeURL = encodeURIComponent(item.url);
+        const encodedUrl = encodeURIComponent(rawUrl);
+        const encodedTitle = encodeURIComponent(rawTitle);
+        const episodeIndex = Number.isFinite(Number(item.episodeIndex)) ? Number(item.episodeIndex) : 0;
+        const playbackPosition = Number.isFinite(Number(item.playbackPosition)) ? Number(item.playbackPosition) : 0;
 
         // 构建历史记录项HTML，添加删除按钮，需要放在position:relative的容器中
         return `
-            <div class="history-item cursor-pointer relative group" onclick="playFromHistory('${item.url}', '${safeTitle}', ${item.episodeIndex || 0}, ${item.playbackPosition || 0})">
-                <button onclick="event.stopPropagation(); deleteHistoryItem('${safeURL}')"
+            <div class="history-item cursor-pointer relative group"
+                 data-history-play="1"
+                 data-history-url="${encodedUrl}"
+                 data-history-title="${encodedTitle}"
+                 data-history-episode-index="${episodeIndex}"
+                 data-history-playback-position="${playbackPosition}">
+                <button data-history-delete="${encodedUrl}"
                         class="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-gray-400 hover:text-red-400 p-1 rounded-full hover:bg-gray-800 z-10"
                         title="删除记录">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -795,6 +801,23 @@ toggleSettings = function(e) {
 // 点击外部关闭历史面板
 document.addEventListener('DOMContentLoaded', function() {
     document.addEventListener('click', function(e) {
+        const deleteHistoryButton = e.target.closest('[data-history-delete]');
+        if (deleteHistoryButton) {
+            e.stopPropagation();
+            deleteHistoryItem(deleteHistoryButton.dataset.historyDelete || '');
+            return;
+        }
+
+        const historyItem = e.target.closest('[data-history-play]');
+        if (historyItem) {
+            const url = decodeURIComponent(historyItem.dataset.historyUrl || '');
+            const title = decodeURIComponent(historyItem.dataset.historyTitle || '');
+            const episodeIndex = parseInt(historyItem.dataset.historyEpisodeIndex || '0', 10);
+            const playbackPosition = parseFloat(historyItem.dataset.historyPlaybackPosition || '0');
+            playFromHistory(url, title, episodeIndex, playbackPosition);
+            return;
+        }
+
         const historyPanel = document.getElementById('historyPanel');
         const historyButton = document.querySelector('button[onclick="toggleHistory(event)"]');
 
