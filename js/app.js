@@ -1,7 +1,8 @@
 // 全局变量
 const LEGACY_DEFAULT_SELECTED_APIS = ["tyyszy", "dyttzy", "bfzy", "ruyi"];
-const CURRENT_DEFAULT_SELECTED_APIS = ["bfzy", "ruyi", "ffzy", "jisu", "zuid", "lzi", "dbzy", "wolong", "wujin", "ikun", "dyttzy", "zy360", "mdzy", "baidu", "ia_pd", "ia_cc", "commons_video", "superembed"];
-const MAGIC_DEFAULT_APIS = ["bfzy", "ruyi", "ffzy", "jisu", "zuid", "lzi", "dbzy", "wolong", "wujin", "ikun", "dyttzy", "zy360", "mdzy", "baidu", "ia_pd", "ia_cc", "commons_video", "superembed"];
+const CURRENT_DEFAULT_SELECTED_APIS = ["bfzy", "ruyi", "ffzy", "jisu", "zuid", "lzi", "dbzy", "wolong", "wujin", "ikun", "dyttzy", "zy360", "mdzy", "baidu", "superembed"];
+const MAGIC_DEFAULT_APIS = ["bfzy", "ruyi", "ffzy", "jisu", "zuid", "lzi", "dbzy", "wolong", "wujin", "ikun", "dyttzy", "zy360", "mdzy", "baidu", "superembed"];
+const LOW_CONFIDENCE_SEARCH_APIS = ["ia_pd", "ia_cc", "commons_video"];
 let selectedAPIs = JSON.parse(localStorage.getItem('selectedAPIs') || JSON.stringify(CURRENT_DEFAULT_SELECTED_APIS)); // 默认选中资源
 let customAPIs = JSON.parse(localStorage.getItem('customAPIs') || '[]'); // 存储自定义API列表
 
@@ -28,6 +29,49 @@ function decodeDataAttr(value) {
     } catch (error) {
         return value || '';
     }
+}
+
+function normalizeSearchText(value) {
+    return String(value || '')
+        .toLowerCase()
+        .replace(/^file:/i, '')
+        .replace(/[《》「」『』"'“”‘’()[\]（）【】\s:：·._-]+/g, '');
+}
+
+function getResultRelevanceRank(item, query) {
+    const title = normalizeSearchText(item?.vod_name);
+    const normalizedQuery = normalizeSearchText(query);
+    if (!title || !normalizedQuery) return 99;
+    if (title === normalizedQuery) return 0;
+    if (title.startsWith(normalizedQuery)) return 1;
+    if (title.includes(normalizedQuery)) return 2;
+    if (normalizedQuery.includes(title) && title.length >= 2) return 3;
+    return 8;
+}
+
+function getSourceReliabilityRank(item) {
+    const sourceCode = item?.source_code || '';
+    if (sourceCode === 'superembed') return 20;
+    if (sourceCode === 'ia_pd' || sourceCode === 'ia_cc') return 80;
+    if (sourceCode === 'commons_video') return 90;
+    if (sourceCode.startsWith('custom_')) return 30;
+    return 10;
+}
+
+function compareSearchResults(query) {
+    return (a, b) => {
+        const rankA = getResultRelevanceRank(a, query) * 10 + getSourceReliabilityRank(a);
+        const rankB = getResultRelevanceRank(b, query) * 10 + getSourceReliabilityRank(b);
+        const rankCompare = rankA - rankB;
+        if (rankCompare !== 0) return rankCompare;
+
+        const sourceOrderA = selectedAPIs.includes(a.source_code) ? selectedAPIs.indexOf(a.source_code) : Number.MAX_SAFE_INTEGER;
+        const sourceOrderB = selectedAPIs.includes(b.source_code) ? selectedAPIs.indexOf(b.source_code) : Number.MAX_SAFE_INTEGER;
+        const sourceOrderCompare = sourceOrderA - sourceOrderB;
+        if (sourceOrderCompare !== 0) return sourceOrderCompare;
+
+        return (a.vod_name || '').localeCompare(b.vod_name || '');
+    };
 }
 
 // 页面初始化
@@ -62,6 +106,15 @@ document.addEventListener('DOMContentLoaded', function () {
     if (validSelectedAPIs.length !== selectedAPIs.length) {
         selectedAPIs = validSelectedAPIs;
         localStorage.setItem('selectedAPIs', JSON.stringify(selectedAPIs));
+    }
+
+    if (!localStorage.getItem('hasPrunedLowConfidenceSearchApis')) {
+        const prunedSelectedAPIs = selectedAPIs.filter(apiId => !LOW_CONFIDENCE_SEARCH_APIS.includes(apiId));
+        if (prunedSelectedAPIs.length !== selectedAPIs.length) {
+            selectedAPIs = prunedSelectedAPIs;
+            localStorage.setItem('selectedAPIs', JSON.stringify(selectedAPIs));
+        }
+        localStorage.setItem('hasPrunedLowConfidenceSearchApis', 'true');
     }
 
     // 初始化API复选框
@@ -733,15 +786,17 @@ async function search() {
             }
         });
 
-        // 对搜索结果进行排序：按名称优先，名称相同时按接口源排序
-        allResults.sort((a, b) => {
-            // 首先按照视频名称排序
-            const nameCompare = (a.vod_name || '').localeCompare(b.vod_name || '');
-            if (nameCompare !== 0) return nameCompare;
+        // 处理搜索结果过滤：如果启用了黄色内容过滤，则过滤掉分类含有敏感内容的项目
+        const yellowFilterEnabled = localStorage.getItem('yellowFilterEnabled') === 'true';
+        if (yellowFilterEnabled) {
+            const banned = ['伦理片', '福利', '里番动漫', '门事件', '萝莉少女', '制服诱惑', '国产传媒', 'cosplay', '黑丝诱惑', '无码', '日本无码', '有码', '日本有码', 'SWAG', '网红主播', '色情片', '同性片', '福利视频', '福利片'];
+            allResults = allResults.filter(item => {
+                const typeName = item.type_name || '';
+                return !banned.some(keyword => typeName.includes(keyword));
+            });
+        }
 
-            // 如果名称相同，则按照来源排序
-            return (a.source_name || '').localeCompare(b.source_name || '');
-        });
+        allResults.sort(compareSearchResults(query));
 
         // 更新搜索结果计数
         const searchResultsCount = document.getElementById('searchResultsCount');
@@ -793,16 +848,6 @@ async function search() {
         } catch (e) {
             console.error('更新浏览器历史失败:', e);
             // 如果更新URL失败，继续执行搜索
-        }
-
-        // 处理搜索结果过滤：如果启用了黄色内容过滤，则过滤掉分类含有敏感内容的项目
-        const yellowFilterEnabled = localStorage.getItem('yellowFilterEnabled') === 'true';
-        if (yellowFilterEnabled) {
-            const banned = ['伦理片', '福利', '里番动漫', '门事件', '萝莉少女', '制服诱惑', '国产传媒', 'cosplay', '黑丝诱惑', '无码', '日本无码', '有码', '日本有码', 'SWAG', '网红主播', '色情片', '同性片', '福利视频', '福利片'];
-            allResults = allResults.filter(item => {
-                const typeName = item.type_name || '';
-                return !banned.some(keyword => typeName.includes(keyword));
-            });
         }
 
         // 添加XSS保护，使用textContent和属性转义
