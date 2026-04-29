@@ -434,10 +434,7 @@ function renderRecommend(tag, pageLimit, pageStart) {
     container.classList.add("relative");
     container.insertAdjacentHTML('beforeend', loadingOverlayHTML);
     
-    const target = `https://movie.douban.com/j/search_subjects?type=${doubanMovieTvCurrentSwitch}&tag=${tag}&sort=recommend&page_limit=${pageLimit}&page_start=${pageStart}`;
-    
-    // 使用通用请求函数
-    fetchDoubanData(target)
+    fetchRecommendData(tag, pageLimit, pageStart)
         .then(data => {
             renderDoubanCards(data, container);
         })
@@ -446,10 +443,59 @@ function renderRecommend(tag, pageLimit, pageStart) {
             container.innerHTML = `
                 <div class="col-span-full text-center py-8">
                     <div class="text-red-400">❌ 获取豆瓣数据失败，请稍后重试</div>
-                    <div class="text-gray-500 text-sm mt-2">提示：使用VPN可能有助于解决此问题</div>
+                    <div class="text-gray-500 text-sm mt-2">推荐源暂时不可用，不影响搜索功能</div>
                 </div>
             `;
         });
+}
+
+async function fetchRecommendData(tag, pageLimit, pageStart) {
+    try {
+        return await fetchWmdbRecommendData(pageLimit, pageStart);
+    } catch (wmdbError) {
+        console.warn("WMDB 推荐源请求失败，回退到豆瓣接口：", wmdbError);
+    }
+
+    const target = `https://movie.douban.com/j/search_subjects?type=${doubanMovieTvCurrentSwitch}&tag=${tag}&sort=recommend&page_limit=${pageLimit}&page_start=${pageStart}`;
+    return fetchDoubanData(target);
+}
+
+async function fetchWmdbRecommendData(pageLimit, pageStart) {
+    const limit = Math.max(1, Math.min(Number(pageLimit) || doubanPageSize, 30));
+    const skip = Math.max(0, Number(pageStart) || 0);
+    const target = `https://api.wmdb.tv/api/v1/top?type=Douban&skip=${skip}&limit=${limit}&lang=Cn`;
+    const proxiedUrl = await window.ProxyAuth?.addAuthToProxyUrl ?
+        await window.ProxyAuth.addAuthToProxyUrl(PROXY_URL + encodeURIComponent(target)) :
+        PROXY_URL + encodeURIComponent(target);
+
+    const response = await fetch(proxiedUrl, {
+        headers: {
+            'Accept': 'application/json, text/plain, */*',
+        }
+    });
+
+    if (!response.ok) {
+        throw new Error(`WMDB HTTP error! Status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const items = Array.isArray(data) ? data : data?.data || [];
+    return {
+        subjects: items.map(mapWmdbItemToDoubanSubject).filter(item => item.title)
+    };
+}
+
+function mapWmdbItemToDoubanSubject(item) {
+    const localized = Array.isArray(item?.data) ? item.data[0] || {} : {};
+    const title = localized.name || item?.name || item?.originalName || '';
+    return {
+        title,
+        rate: item?.doubanRating || item?.imdbRating || '暂无',
+        cover: localized.poster || item?.poster || '',
+        url: item?.doubanId ? `https://movie.douban.com/subject/${item.doubanId}/` : '',
+        year: item?.year || '',
+        type: item?.type || '',
+    };
 }
 
 async function fetchDoubanData(url) {
