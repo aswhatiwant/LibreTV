@@ -128,7 +128,7 @@ export async function onRequest(context) {
     function getTargetUrlFromPath(pathname) {
         // 路径格式: /proxy/经过编码的URL
         // 例如: /proxy/https%3A%2F%2Fexample.com%2Fplaylist.m3u8
-        const encodedUrl = pathname.replace(/^\/proxy\//, '');
+        const encodedUrl = pathname.replace(/^\/proxy\/(?:v\d+\/)?/, '');
         if (!encodedUrl) return null;
         try {
             // 解码
