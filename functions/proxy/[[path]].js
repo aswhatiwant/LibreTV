@@ -259,7 +259,8 @@ export async function onRequest(context) {
             }
 
             const contentType = response.headers.get('Content-Type') || '';
-            const isBinary = isMediaFile(targetUrl, contentType) && !isM3u8Content('', contentType);
+            const isHtml = contentType.toLowerCase().includes('text/html');
+            const isBinary = !isHtml && isMediaFile(targetUrl, contentType) && !isM3u8Content('', contentType);
             const content = isBinary ? await response.arrayBuffer() : await response.text();
             if (!isBinary) {
                 const verifiedContent = await fetchBrowserVerifiedContent(targetUrl, content, response.headers);
