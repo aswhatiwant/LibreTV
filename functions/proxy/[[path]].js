@@ -261,6 +261,12 @@ export async function onRequest(context) {
             const contentType = response.headers.get('Content-Type') || '';
             const isBinary = isMediaFile(targetUrl, contentType) && !isM3u8Content('', contentType);
             const content = isBinary ? await response.arrayBuffer() : await response.text();
+            if (!isBinary) {
+                const verifiedContent = await fetchBrowserVerifiedContent(targetUrl, content, response.headers);
+                if (verifiedContent) {
+                    return verifiedContent;
+                }
+            }
             const contentLength = isBinary ? content.byteLength : content.length;
             logDebug(`请求成功: ${targetUrl}, Content-Type: ${contentType}, 内容长度: ${contentLength}`);
             return { content, contentType, responseHeaders: response.headers, isBinary }; // 同时返回原始响应头
@@ -270,6 +276,44 @@ export async function onRequest(context) {
             // 抛出更详细的错误
             throw new Error(`请求目标URL失败 ${targetUrl}: ${error.message}`);
         }
+    }
+
+    async function fetchBrowserVerifiedContent(targetUrl, content, responseHeaders) {
+        const contentType = responseHeaders.get('Content-Type') || '';
+        const isBrowserVerify = responseHeaders.get('L-BLOCK') === 'BrowserVerify';
+        if (!isBrowserVerify || !contentType.toLowerCase().includes('text/html')) {
+            return null;
+        }
+
+        const redirectMatch = content.match(/window\.location\.href\s*=\s*['"]([^'"]+)['"]/i);
+        if (!redirectMatch) {
+            return null;
+        }
+
+        const verifiedUrl = resolveUrl(targetUrl, redirectMatch[1]);
+        logDebug(`检测到 BrowserVerify 图片跳转，二次请求: ${verifiedUrl}`);
+
+        const verifiedHeaders = new Headers({
+            'User-Agent': getRandomUserAgent(),
+            'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+            'Accept-Language': request.headers.get('Accept-Language') || 'zh-CN,zh;q=0.9,en;q=0.8',
+            'Referer': new URL(targetUrl).origin
+        });
+
+        const verifiedResponse = await fetch(verifiedUrl, { headers: verifiedHeaders, redirect: 'follow' });
+        if (!verifiedResponse.ok) {
+            throw new Error(`BrowserVerify 二次请求失败 ${verifiedResponse.status}: ${verifiedResponse.statusText}`);
+        }
+
+        const verifiedContentType = verifiedResponse.headers.get('Content-Type') || '';
+        const verifiedIsBinary = isMediaFile(verifiedUrl, verifiedContentType) && !isM3u8Content('', verifiedContentType);
+        const verifiedContent = verifiedIsBinary ? await verifiedResponse.arrayBuffer() : await verifiedResponse.text();
+        return {
+            content: verifiedContent,
+            contentType: verifiedContentType,
+            responseHeaders: verifiedResponse.headers,
+            isBinary: verifiedIsBinary
+        };
     }
 
     // 判断是否是 M3U8 内容

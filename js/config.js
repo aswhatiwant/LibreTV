@@ -231,12 +231,7 @@ function getDefaultPosterDataUrl() {
 }
 
 function isKnownBlockedCoverUrl(url) {
-    try {
-        const { hostname } = new URL(url);
-        return hostname === 'www.imgzy360.com' || hostname === 'imgzy360.com';
-    } catch (error) {
-        return false;
-    }
+    return false;
 }
 
 // 添加多个自定义API源的配置
