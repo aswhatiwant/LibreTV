@@ -450,19 +450,15 @@ function renderRecommend(tag, pageLimit, pageStart) {
 }
 
 async function fetchRecommendData(tag, pageLimit, pageStart) {
-    try {
-        return await fetchWmdbRecommendData(pageLimit, pageStart);
-    } catch (wmdbError) {
-        console.warn("WMDB 推荐源请求失败，回退到豆瓣接口：", wmdbError);
-    }
-
-    const target = `https://movie.douban.com/j/search_subjects?type=${doubanMovieTvCurrentSwitch}&tag=${tag}&sort=recommend&page_limit=${pageLimit}&page_start=${pageStart}`;
-    return fetchDoubanData(target);
+    return fetchWmdbRecommendData(tag, pageLimit, pageStart);
 }
 
-async function fetchWmdbRecommendData(pageLimit, pageStart) {
+async function fetchWmdbRecommendData(tag, pageLimit, pageStart) {
     const limit = Math.max(1, Math.min(Number(pageLimit) || doubanPageSize, 30));
-    const skip = Math.max(0, Number(pageStart) || 0);
+    const currentTags = doubanMovieTvCurrentSwitch === 'movie' ? movieTags : tvTags;
+    const tagIndex = Math.max(0, currentTags.indexOf(tag));
+    const typeOffset = doubanMovieTvCurrentSwitch === 'tv' ? 160 : 0;
+    const skip = typeOffset + tagIndex * limit + Math.max(0, Number(pageStart) || 0);
     const target = `https://api.wmdb.tv/api/v1/top?type=Douban&skip=${skip}&limit=${limit}&lang=Cn`;
     const proxiedUrl = await window.ProxyAuth?.addAuthToProxyUrl ?
         await window.ProxyAuth.addAuthToProxyUrl(PROXY_URL + encodeURIComponent(target)) :

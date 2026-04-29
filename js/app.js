@@ -1,8 +1,8 @@
 // 全局变量
 const LEGACY_DEFAULT_SELECTED_APIS = ["tyyszy", "dyttzy", "bfzy", "ruyi"];
-const CURRENT_DEFAULT_SELECTED_APIS = ["bfzy", "ruyi", "ffzy", "jisu", "zuid", "lzi", "dbzy", "wolong", "wujin", "ikun", "dyttzy", "zy360", "mdzy", "baidu", "superembed"];
-const MAGIC_DEFAULT_APIS = ["bfzy", "ruyi", "ffzy", "jisu", "zuid", "lzi", "dbzy", "wolong", "wujin", "ikun", "dyttzy", "zy360", "mdzy", "baidu", "superembed"];
-const LOW_CONFIDENCE_SEARCH_APIS = ["ia_pd", "ia_cc", "commons_video"];
+const CURRENT_DEFAULT_SELECTED_APIS = ["bfzy", "ruyi", "ffzy", "jisu", "zuid", "lzi", "dbzy", "wolong", "wujin", "ikun", "dyttzy", "zy360", "mdzy", "baidu"];
+const MAGIC_DEFAULT_APIS = ["bfzy", "ruyi", "ffzy", "jisu", "zuid", "lzi", "dbzy", "wolong", "wujin", "ikun", "dyttzy", "zy360", "mdzy", "baidu"];
+const REMOVED_SEARCH_APIS = ["ia_pd", "ia_cc", "commons_video", "superembed"];
 let selectedAPIs = JSON.parse(localStorage.getItem('selectedAPIs') || JSON.stringify(CURRENT_DEFAULT_SELECTED_APIS)); // 默认选中资源
 let customAPIs = JSON.parse(localStorage.getItem('customAPIs') || '[]'); // 存储自定义API列表
 
@@ -51,9 +51,6 @@ function getResultRelevanceRank(item, query) {
 
 function getSourceReliabilityRank(item) {
     const sourceCode = item?.source_code || '';
-    if (sourceCode === 'superembed') return 20;
-    if (sourceCode === 'ia_pd' || sourceCode === 'ia_cc') return 80;
-    if (sourceCode === 'commons_video') return 90;
     if (sourceCode.startsWith('custom_')) return 30;
     return 10;
 }
@@ -108,13 +105,13 @@ document.addEventListener('DOMContentLoaded', function () {
         localStorage.setItem('selectedAPIs', JSON.stringify(selectedAPIs));
     }
 
-    if (!localStorage.getItem('hasPrunedLowConfidenceSearchApis')) {
-        const prunedSelectedAPIs = selectedAPIs.filter(apiId => !LOW_CONFIDENCE_SEARCH_APIS.includes(apiId));
+    if (!localStorage.getItem('hasPrunedRemovedSearchApis')) {
+        const prunedSelectedAPIs = selectedAPIs.filter(apiId => !REMOVED_SEARCH_APIS.includes(apiId));
         if (prunedSelectedAPIs.length !== selectedAPIs.length) {
             selectedAPIs = prunedSelectedAPIs;
             localStorage.setItem('selectedAPIs', JSON.stringify(selectedAPIs));
         }
-        localStorage.setItem('hasPrunedLowConfidenceSearchApis', 'true');
+        localStorage.setItem('hasPrunedRemovedSearchApis', 'true');
     }
 
     // 初始化API复选框

@@ -93,24 +93,6 @@ const API_SITES = {
     lzi: {
         api: 'https://cj.lziapi.com/api.php/provide/vod/',
         name: '量子资源站'
-    },
-    ia_pd: {
-        name: '互联网档案馆·公版电影',
-        adapter: 'internet_archive',
-        archiveLicenseFilter: 'licenseurl:(*publicdomain*)'
-    },
-    ia_cc: {
-        name: '互联网档案馆·CC电影',
-        adapter: 'internet_archive',
-        archiveLicenseFilter: 'licenseurl:(*creativecommons*)'
-    },
-    commons_video: {
-        name: '维基共享资源·视频',
-        adapter: 'wikimedia_commons_video'
-    },
-    superembed: {
-        name: 'SuperEmbed·魔法',
-        adapter: 'superembed_magic'
     }
     //ARCHIVE https://telegra.ph/APIs-08-12
 };
