@@ -695,6 +695,7 @@ function resetSearchArea() {
     document.getElementById('searchArea').classList.add('flex-1');
     document.getElementById('searchArea').classList.remove('mb-8');
     document.getElementById('resultsArea').classList.add('hidden');
+    document.getElementById('liveTvArea')?.classList.add('hidden');
 
     // 确保页脚正确显示，移除相对定位
     const footer = document.querySelector('.footer');
@@ -805,6 +806,7 @@ async function search() {
         document.getElementById('searchArea').classList.remove('flex-1');
         document.getElementById('searchArea').classList.add('mb-8');
         document.getElementById('resultsArea').classList.remove('hidden');
+        document.getElementById('liveTvArea')?.classList.add('hidden');
 
         // 隐藏豆瓣推荐区域（如果存在）
         const doubanArea = document.getElementById('doubanArea');

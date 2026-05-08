@@ -94,6 +94,7 @@ let adFilteringEnabled = true; // 默认开启广告过滤
 let progressSaveInterval = null; // 定期保存进度的计时器
 let currentVideoUrl = ''; // 记录当前实际的视频URL
 let externalEmbedMode = false; // 外链嵌入模式
+let isLiveMode = false; // 直播模式不保存点播进度、不显示剧集导航
 const isWebkit = (typeof window.webkitConvertPointFromNodeToPage === 'function')
 Artplayer.FULLSCREEN_WEB_IN_BODY = true;
 
@@ -134,6 +135,7 @@ function initializePageContent() {
     const title = urlParams.get('title');
     const sourceCode = urlParams.get('source');
     externalEmbedMode = urlParams.get('external') === '1';
+    isLiveMode = urlParams.get('live') === '1' || sourceCode === 'live';
     let index = parseInt(urlParams.get('index') || '0');
     const episodesList = urlParams.get('episodes'); // 从URL获取集数信息
     const savedPosition = parseInt(urlParams.get('position') || '0'); // 获取保存的播放位置
@@ -195,7 +197,9 @@ function initializePageContent() {
 
     // 优先使用URL传递的集数信息，否则从localStorage获取
     try {
-        if (episodesList) {
+        if (isLiveMode) {
+            currentEpisodes = [];
+        } else if (episodesList) {
             // 如果URL中有集数数据，优先使用它
             currentEpisodes = JSON.parse(decodeURIComponent(episodesList));
 
@@ -233,6 +237,7 @@ function initializePageContent() {
     // 设置页面标题
     document.title = currentVideoTitle + ' - LibreTV播放器';
     document.getElementById('videoTitle').textContent = currentVideoTitle;
+    applyLiveModeLayout();
 
     // 初始化播放器
     if (videoUrl) {
@@ -265,11 +270,13 @@ function initializePageContent() {
     document.addEventListener('keydown', handleKeyboardShortcuts);
 
     // 添加页面离开事件监听，保存播放位置
-    window.addEventListener('beforeunload', saveCurrentProgress);
+    if (!isLiveMode) {
+        window.addEventListener('beforeunload', saveCurrentProgress);
+    }
 
     // 新增：页面隐藏（切后台/切标签）时也保存
     document.addEventListener('visibilitychange', function () {
-        if (document.visibilityState === 'hidden') {
+        if (!isLiveMode && document.visibilityState === 'hidden') {
             saveCurrentProgress();
         }
     });
@@ -277,13 +284,15 @@ function initializePageContent() {
     // 视频暂停时也保存
     const waitForVideo = setInterval(() => {
         if (art && art.video) {
-            art.video.addEventListener('pause', saveCurrentProgress);
+            if (!isLiveMode) {
+                art.video.addEventListener('pause', saveCurrentProgress);
+            }
 
             // 新增：播放进度变化时节流保存
             let lastSave = 0;
             art.video.addEventListener('timeupdate', function() {
                 const now = Date.now();
-                if (now - lastSave > 5000) { // 每5秒最多保存一次
+                if (!isLiveMode && now - lastSave > 5000) { // 每5秒最多保存一次
                     saveCurrentProgress();
                     lastSave = now;
                 }
@@ -292,6 +301,28 @@ function initializePageContent() {
             clearInterval(waitForVideo);
         }
     }, 200);
+}
+
+function applyLiveModeLayout() {
+    if (!isLiveMode) return;
+
+    const category = new URLSearchParams(window.location.search).get('category') || '直播';
+    const region = new URLSearchParams(window.location.search).get('region') || '';
+    const loadingTitle = document.getElementById('loading-title');
+    if (loadingTitle) loadingTitle.textContent = '正在加载直播...';
+    document.getElementById('resourceInfoBarContainer')?.classList.remove('hidden');
+    document.getElementById('episodesGrid')?.closest('.player-container')?.classList.add('hidden');
+    document.getElementById('episodeInfo')?.closest('.player-container')?.classList.add('hidden');
+    document.getElementById('autoplayToggle')?.closest('.player-container')?.classList.add('hidden');
+    const resourceInfoBar = document.getElementById('resourceInfoBarContainer');
+    if (!resourceInfoBar) return;
+    resourceInfoBar.innerHTML = `
+        <div class="resource-info-bar-left flex">
+            <span>${escapeHtml(category)}</span>
+            <span class="resource-info-bar-videos">${escapeHtml(region || 'LIVE')}</span>
+        </div>
+        <span class="px-3 py-1 rounded-full bg-red-600 text-white text-sm font-semibold">直播中</span>
+    `;
 }
 
 // 处理键盘快捷键
@@ -434,7 +465,7 @@ function initPlayer(videoUrl) {
         debug: false,
         loader: adFilteringEnabled ? CustomHlsJsLoader : Hls.DefaultConfig.loader,
         enableWorker: true,
-        lowLatencyMode: false,
+        lowLatencyMode: isLiveMode,
         backBufferLength: 90,
         maxBufferLength: 30,
         maxMaxBufferLength: 60,
@@ -455,7 +486,7 @@ function initPlayer(videoUrl) {
         stretchShortVideoTrack: true,
         appendErrorMaxRetry: 5,  // 增加尝试次数
         liveSyncDurationCount: 3,
-        liveDurationInfinity: false
+        liveDurationInfinity: isLiveMode
     };
 
     // Create new ArtPlayer instance
@@ -465,22 +496,22 @@ function initPlayer(videoUrl) {
         type: videoType,
         title: videoTitle,
         volume: 0.8,
-        isLive: false,
+        isLive: isLiveMode,
         muted: false,
         autoplay: true,
         pip: true,
         autoSize: false,
         autoMini: true,
-        screenshot: true,
+        screenshot: !isLiveMode,
         setting: true,
         loop: false,
         flip: false,
-        playbackRate: true,
+        playbackRate: !isLiveMode,
         aspectRatio: false,
         fullscreen: true,
         fullscreenWeb: true,
         subtitleOffset: false,
-        miniProgressBar: true,
+        miniProgressBar: !isLiveMode,
         mutex: true,
         backdrop: true,
         playsInline: true,
@@ -865,6 +896,11 @@ function showError(message) {
 
 // 更新集数信息
 function updateEpisodeInfo() {
+    if (isLiveMode) {
+        document.getElementById('episodeInfo').textContent = '直播';
+        return;
+    }
+
     if (currentEpisodes.length > 0) {
         document.getElementById('episodeInfo').textContent = `第 ${currentEpisodeIndex + 1}/${currentEpisodes.length} 集`;
     } else {
@@ -905,6 +941,11 @@ function renderEpisodes() {
     const episodesList = document.getElementById('episodesList');
     if (!episodesList) return;
 
+    if (isLiveMode) {
+        episodesList.innerHTML = '';
+        return;
+    }
+
     if (!currentEpisodes || currentEpisodes.length === 0) {
         episodesList.innerHTML = '<div class="col-span-full text-center text-gray-400 py-8">没有可用的集数</div>';
         return;
@@ -932,6 +973,8 @@ function renderEpisodes() {
 
 // 播放指定集数
 function playEpisode(index) {
+    if (isLiveMode) return;
+
     // 确保index在有效范围内
     if (index < 0 || index >= currentEpisodes.length) {
         return;
@@ -1120,6 +1163,8 @@ function setupProgressBarPreciseClicks() {
 
 // 在播放器初始化后添加视频到历史记录
 function saveToHistory() {
+    if (isLiveMode) return;
+
     // 确保 currentEpisodes 非空且有当前视频URL
     if (!currentEpisodes || currentEpisodes.length === 0 || !currentVideoUrl) {
         return;
@@ -1262,6 +1307,8 @@ function formatTime(seconds) {
 
 // 开始定期保存播放进度
 function startProgressSaveInterval() {
+    if (isLiveMode) return;
+
     // 清除可能存在的旧计时器
     if (progressSaveInterval) {
         clearInterval(progressSaveInterval);
@@ -1273,6 +1320,7 @@ function startProgressSaveInterval() {
 
 // 保存当前播放进度
 function saveCurrentProgress() {
+    if (isLiveMode) return;
     if (!art || !art.video) return;
     const currentTime = art.video.currentTime;
     const duration = art.video.duration;
@@ -1513,6 +1561,20 @@ function renderResourceInfoBar() {
     const container = document.getElementById('resourceInfoBarContainer');
     if (!container) {
         console.error('找不到资源信息卡片容器');
+        return;
+    }
+
+    if (isLiveMode) {
+        const urlParams = new URLSearchParams(window.location.search);
+        const category = urlParams.get('category') || '电视直播';
+        const region = urlParams.get('region') || 'LIVE';
+        container.innerHTML = `
+          <div class="resource-info-bar-left flex">
+            <span>${escapeHtml(category)}</span>
+            <span class="resource-info-bar-videos">${escapeHtml(region)}</span>
+          </div>
+          <span class="px-3 py-1 rounded-full bg-red-600 text-white text-sm font-semibold">直播中</span>
+        `;
         return;
     }
     
