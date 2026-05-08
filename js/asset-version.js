@@ -1,0 +1,2 @@
+const ASSET_VERSION = '20260508-live-tv-v3';
+window.ASSET_VERSION = ASSET_VERSION;

@@ -50,6 +50,7 @@
 }
 
 .live-channel-card {
+    position: relative;
     text-align: left;
     overflow: hidden;
     border-radius: 1rem;
@@ -63,6 +64,31 @@
     border-color: rgba(0, 204, 255, 0.55);
     transform: translateY(-3px);
     box-shadow: 0 16px 34px rgba(0, 0, 0, 0.35);
+}
+
+.live-favorite-btn {
+    position: absolute;
+    top: 0.65rem;
+    right: 0.65rem;
+    z-index: 2;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    background: rgba(5, 8, 13, 0.74);
+    color: rgba(230, 242, 255, 0.62);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    backdrop-filter: blur(10px);
+}
+
+.live-favorite-btn:hover,
+.live-favorite-btn.active {
+    color: #ffd21f;
+    border-color: rgba(255, 210, 31, 0.6);
+    background: rgba(0, 0, 0, 0.82);
 }
 
 .live-channel-logo-wrap {

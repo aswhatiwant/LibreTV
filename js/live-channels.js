@@ -210,13 +210,47 @@ const DISABLED_LIVE_CHANNEL_IDS = new Set([
     'indigenous-tv', 'china-weather', 'shanghai-education',
     'cetv-1', 'cetv-2', 'tdm-ou-mun', 'sky-news',
     'cna-international', 'nasa-public', 'docurama', 'bob-ross',
-    'americas-funniest-home-videos'
+    'americas-funniest-home-videos', 'guangzhou-tv', 'tv-brics-chinese',
+    'euronews-alt'
 ]);
 
 const ACTIVE_LIVE_CHANNELS = LIVE_CHANNELS.filter(channel => !DISABLED_LIVE_CHANNEL_IDS.has(channel.id));
+const LIVE_FAVORITES_KEY = 'liveFavoriteChannels';
+const LIVE_RECENT_KEY = 'liveRecentChannels';
+const LIVE_RECENT_LIMIT = 12;
 
 let currentLiveCategory = '全部';
 let currentLiveQuery = '';
+
+function readLiveStorageArray(key) {
+    try {
+        const data = JSON.parse(localStorage.getItem(key) || '[]');
+        return Array.isArray(data) ? data : [];
+    } catch (error) {
+        return [];
+    }
+}
+
+function getFavoriteLiveIds() {
+    return readLiveStorageArray(LIVE_FAVORITES_KEY);
+}
+
+function setFavoriteLiveIds(ids) {
+    localStorage.setItem(LIVE_FAVORITES_KEY, JSON.stringify([...new Set(ids)]));
+}
+
+function getRecentLiveIds() {
+    return readLiveStorageArray(LIVE_RECENT_KEY);
+}
+
+function addRecentLiveChannel(channelId) {
+    const ids = [channelId, ...getRecentLiveIds().filter(id => id !== channelId)].slice(0, LIVE_RECENT_LIMIT);
+    localStorage.setItem(LIVE_RECENT_KEY, JSON.stringify(ids));
+}
+
+function getLiveChannelById(channelId) {
+    return ACTIVE_LIVE_CHANNELS.find(channel => channel.id === channelId);
+}
 
 function getLiveLogoFallback(channel) {
     const label = encodeURIComponent(channel.lang === 'zh' ? '直播' : 'LIVE');
@@ -230,17 +264,36 @@ function normalizeLiveText(value) {
 
 function getFilteredLiveChannels() {
     const query = normalizeLiveText(currentLiveQuery);
-    return ACTIVE_LIVE_CHANNELS.filter(channel => {
-        const categoryMatched = currentLiveCategory === '全部' || channel.category === currentLiveCategory;
+    const favoriteIds = getFavoriteLiveIds();
+    const recentIds = getRecentLiveIds();
+    const favoriteSet = new Set(favoriteIds);
+    const recentSet = new Set(recentIds);
+    let channels = ACTIVE_LIVE_CHANNELS;
+
+    if (currentLiveCategory === '收藏') {
+        channels = favoriteIds.map(getLiveChannelById).filter(Boolean);
+    } else if (currentLiveCategory === '最近观看') {
+        channels = recentIds.map(getLiveChannelById).filter(Boolean);
+    }
+
+    return channels.filter(channel => {
+        const categoryMatched = ['全部', '收藏', '最近观看'].includes(currentLiveCategory) || channel.category === currentLiveCategory;
         const queryMatched = !query || normalizeLiveText(`${channel.name}${channel.category}${channel.region}`).includes(query);
         return categoryMatched && queryMatched;
+    }).sort((a, b) => {
+        const favoriteRank = Number(favoriteSet.has(b.id)) - Number(favoriteSet.has(a.id));
+        if (favoriteRank !== 0) return favoriteRank;
+        const recentRank = Number(recentSet.has(b.id)) - Number(recentSet.has(a.id));
+        if (recentRank !== 0) return recentRank;
+        return 0;
     });
 }
 
 function renderLiveCategories() {
     const container = document.getElementById('liveCategoryTabs');
     if (!container) return;
-    container.innerHTML = LIVE_CHANNEL_CATEGORIES.map(category => `
+    const categories = ['收藏', '最近观看', ...LIVE_CHANNEL_CATEGORIES];
+    container.innerHTML = categories.map(category => `
         <button type="button"
                 class="live-category-tab ${category === currentLiveCategory ? 'active' : ''}"
                 data-live-category="${encodeURIComponent(category)}">
@@ -255,6 +308,7 @@ function renderLiveChannels() {
     if (!list) return;
 
     const channels = getFilteredLiveChannels();
+    const favoriteSet = new Set(getFavoriteLiveIds());
     if (count) count.textContent = channels.length;
 
     if (channels.length === 0) {
@@ -265,7 +319,14 @@ function renderLiveChannels() {
     list.innerHTML = channels.map(channel => {
         const fallback = getLiveLogoFallback(channel);
         return `
-            <button type="button" class="live-channel-card" data-live-channel="${escapeHtml(channel.id)}">
+            <div class="live-channel-card" data-live-channel="${escapeHtml(channel.id)}">
+                <button type="button"
+                        class="live-favorite-btn ${favoriteSet.has(channel.id) ? 'active' : ''}"
+                        data-live-favorite="${escapeHtml(channel.id)}"
+                        title="${favoriteSet.has(channel.id) ? '取消收藏' : '收藏频道'}"
+                        aria-label="${favoriteSet.has(channel.id) ? '取消收藏' : '收藏频道'}">
+                    ★
+                </button>
                 <div class="live-channel-logo-wrap">
                     <img src="${escapeHtml(channel.logo || fallback)}"
                          alt="${escapeHtml(channel.name)}"
@@ -280,9 +341,21 @@ function renderLiveChannels() {
                         <span>${escapeHtml(channel.region)}</span>
                     </div>
                 </div>
-            </button>
+            </div>
         `;
     }).join('');
+}
+
+function toggleLiveFavorite(channelId) {
+    const channel = getLiveChannelById(channelId);
+    if (!channel) return;
+    const favorites = getFavoriteLiveIds();
+    const nextFavorites = favorites.includes(channelId)
+        ? favorites.filter(id => id !== channelId)
+        : [channelId, ...favorites];
+    setFavoriteLiveIds(nextFavorites);
+    renderLiveCategories();
+    renderLiveChannels();
 }
 
 function showLiveTv() {
@@ -328,6 +401,7 @@ function playLiveChannel(channelId) {
         category: channel.category,
         region: channel.region
     });
+    addRecentLiveChannel(channel.id);
     localStorage.setItem('lastPageUrl', window.location.href);
     window.location.href = `player.html?${params.toString()}`;
 }
@@ -351,6 +425,14 @@ document.addEventListener('DOMContentLoaded', function () {
         renderLiveChannels();
     });
     liveList?.addEventListener('click', event => {
+        const favoriteButton = event.target.closest('[data-live-favorite]');
+        if (favoriteButton) {
+            event.preventDefault();
+            event.stopPropagation();
+            toggleLiveFavorite(favoriteButton.dataset.liveFavorite);
+            return;
+        }
+
         const card = event.target.closest('[data-live-channel]');
         if (!card) return;
         playLiveChannel(card.dataset.liveChannel);

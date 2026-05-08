@@ -891,7 +891,23 @@ function showError(message) {
     const errorEl = document.getElementById('error');
     if (errorEl) errorEl.style.display = 'flex';
     const errorMsgEl = document.getElementById('error-message');
+    const errorSubEl = document.querySelector('.error-message-sub');
+    if (isLiveMode) {
+        if (errorMsgEl) errorMsgEl.textContent = '直播源当前不可用';
+        if (errorSubEl) {
+            errorSubEl.innerHTML = `
+                <div>${escapeHtml(message || '可能是地区限制、源站临时故障或直播流已下线。')}</div>
+                <button type="button" class="mt-3 px-4 py-2 bg-[#222] hover:bg-[#333] border border-[#333] rounded-lg"
+                        onclick="window.location.href='/?live=1'">
+                    返回电视直播
+                </button>
+            `;
+        }
+        return;
+    }
+
     if (errorMsgEl) errorMsgEl.textContent = message;
+    if (errorSubEl) errorSubEl.textContent = '请尝试其他视频源或稍后重试';
 }
 
 // 更新集数信息
