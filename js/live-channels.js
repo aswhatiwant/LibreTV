@@ -8,6 +8,8 @@ const LIVE_CHANNEL_CATEGORIES = [
     '中文财经',
     '中文纪录',
     '中文教育',
+    '中文影视',
+    '中文生活',
     'English News',
     'English Local News',
     'English Business',
@@ -15,6 +17,7 @@ const LIVE_CHANNEL_CATEGORIES = [
     'English Public',
     'English Science',
     'English Weather',
+    'English Movies',
     'English Entertainment',
     'English Classic'
 ];
@@ -152,7 +155,49 @@ const LIVE_CHANNELS = [
     { id: 'backstage', name: 'Backstage', category: 'English Documentary', lang: 'en', region: 'Global', logo: 'https://i.imgur.com/qcTNvNU.png', url: 'https://d2ah48mnofquik.cloudfront.net/Backstage.m3u8', source: 'iptv-org' },
     { id: 'amg-tv', name: 'AMG TV', category: 'English Entertainment', lang: 'en', region: 'US', logo: 'https://i.imgur.com/m5Anun9.png', url: 'https://2-fss-2.streamhoster.com/pl_138/201660-1270634-1/playlist.m3u8', source: 'iptv-org' },
     { id: 'bar-rescue', name: 'Bar Rescue', category: 'English Entertainment', lang: 'en', region: 'US', logo: 'https://i.imgur.com/WFgWGPb.png', url: 'https://jmp2.uk/plu-60a3d889a5b3690008dc7fe8.m3u8', source: 'iptv-org' },
-    { id: '48-hours', name: '48 Hours', category: 'English Entertainment', lang: 'en', region: 'US', logo: 'https://images.pluto.tv/channels/6176f39e709f160007ec61c3/colorLogoPNG.png', url: 'https://jmp2.uk/plu-62e925bc68d18a00077bb990.m3u8', source: 'iptv-org' }
+    { id: '48-hours', name: '48 Hours', category: 'English Entertainment', lang: 'en', region: 'US', logo: 'https://images.pluto.tv/channels/6176f39e709f160007ec61c3/colorLogoPNG.png', url: 'https://jmp2.uk/plu-62e925bc68d18a00077bb990.m3u8', source: 'iptv-org' },
+    { id: 'chifeng-news', name: '赤峰新闻综合', category: '中文新闻', lang: 'zh', region: 'China', logo: 'https://www.tvchinese.net/uploads/tv/cfxwzhpd.jpg', url: 'http://play1-qk.nmtv.cn/live/1735546697341033.m3u8', source: 'iptv-org country' },
+    { id: 'anshun-news', name: '安顺新闻综合', category: '中文新闻', lang: 'zh', region: 'China', logo: 'https://www.tvchinese.net/uploads/tv/anshun.jpg', url: 'https://hplayer1.juyun.tv/camera/154379194.m3u8', source: 'iptv-org country' },
+    { id: 'harbin-movie', name: '哈尔滨影视', category: '中文影视', lang: 'zh', region: 'China', logo: 'https://www.tvchinese.net/uploads/tv/haerbin.jpg', url: 'https://stream.hrbtv.net/yspd/playlist.m3u8', source: 'iptv-org country' },
+    { id: 'harbin-news', name: '哈尔滨新闻综合', category: '中文新闻', lang: 'zh', region: 'China', logo: 'https://www.tvchinese.net/uploads/tv/haerbin.jpg', url: 'https://stream.hrbtv.net/xwzh/playlist.m3u8?_upt=ef41dd531755913594', source: 'iptv-org country' },
+    { id: 'qtv-1', name: '青岛新闻综合 QTV-1', category: '中文新闻', lang: 'zh', region: 'China', logo: 'https://www.tvchinese.net/uploads/tv/qdtv1.jpg', url: 'http://video10.qtv.com.cn/drm/qtv1at/manifest.m3u8', source: 'iptv-org country' },
+    { id: 'qtv-2', name: '青岛生活服务 QTV-2', category: '中文生活', lang: 'zh', region: 'China', logo: 'https://www.tvchinese.net/uploads/tv/qdtv2.jpg', url: 'http://video10.qtv.com.cn/drm/qtv2at/manifest.m3u8', source: 'iptv-org country' },
+    { id: 'qtv-3', name: '青岛影视 QTV-3', category: '中文影视', lang: 'zh', region: 'China', logo: 'https://www.tvchinese.net/uploads/tv/qdtv3.jpg', url: 'http://video10.qtv.com.cn/drm/qtv3at/manifest.m3u8', source: 'iptv-org country' },
+    { id: 'qtv-4', name: '青岛文体 QTV-4', category: '中文综合', lang: 'zh', region: 'China', logo: 'https://www.tvchinese.net/uploads/tv/qdtv4.jpg', url: 'http://video10.qtv.com.cn/drm/qtv4at/manifest.m3u8', source: 'iptv-org country' },
+    { id: 'qtv-5', name: '青岛财经 QTV-5', category: '中文财经', lang: 'zh', region: 'China', logo: 'https://www.tvchinese.net/uploads/tv/qdtv5.jpg', url: 'http://video10.qtv.com.cn/drm/qtv5at/manifest.m3u8', source: 'iptv-org country' },
+    { id: 'qtv-6', name: '青岛少儿 QTV-6', category: '中文生活', lang: 'zh', region: 'China', logo: 'https://www.tvchinese.net/uploads/tv/qdtv6.jpg', url: 'http://video10.qtv.com.cn/drm/qtv6at/manifest.m3u8', source: 'iptv-org country' },
+    { id: 'cctv-9-documentary', name: 'CCTV-9 纪录', category: '中文纪录', lang: 'zh', region: 'China', logo: 'https://i.imgur.com/3tivvMm.png', url: 'https://xykt-fix.github.io/Y77.m3u8', source: 'iptv-org country' },
+    { id: 'siping-tv', name: '四平综合', category: '中文综合', lang: 'zh', region: 'China', logo: 'https://www.tvchinese.net/uploads/tv/sptv1.jpg', url: 'http://stream2.jlntv.cn/sptv/sd/live.m3u8?_upt=f27750421743154598', source: 'iptv-org country' },
+    { id: 'tonghua-news', name: '通化新闻综合', category: '中文新闻', lang: 'zh', region: 'China', logo: 'https://www.tvchinese.net/uploads/tv/thtv1.jpg', url: 'http://lsfb.avap.jilintv.cn/zqvk7vpj/channel/43ea5771aa44421591f9dfd2b71f1b9b/index.m3u8', source: 'iptv-org country' },
+    { id: 'home-plus', name: 'Home Plus', category: '中文影视', lang: 'zh', region: 'Hong Kong', logo: 'https://www.lyngsat.com/logo/tv/hh/homeplus.png', url: 'https://homeplushls.wns.live/hls/stream.m3u8', source: 'iptv-org country' },
+    { id: 'bread-tv', name: 'Bread TV 面包台', category: '中文综合', lang: 'zh', region: 'Global', logo: 'https://bread-tv.com/uploads/allimg/241202/9_1836542371.png', url: 'https://video.bread-tv.com:8091/hls-live24/online/index.m3u8', source: 'iptv-org country' },
+    { id: 'celestial-movies', name: '天映频道', category: '中文影视', lang: 'zh', region: 'Hong Kong', logo: 'https://i.imgur.com/Mb5ssnu.png', url: 'http://103.58.160.157:8278/720-CELESTIALMOVIES/playlist.m3u8', source: 'iptv-org country' },
+    { id: 'pet-club-tv', name: 'Pet Club TV', category: '中文生活', lang: 'zh', region: 'Hong Kong', logo: 'https://i.imgur.com/ykPNNwQ.png', url: 'https://petclub-samsungaus.amagi.tv/playlist.m3u8', source: 'iptv-org country' },
+    { id: 'dali-tv', name: '大立电视台', category: '中文综合', lang: 'zh', region: 'Taiwan', logo: 'https://i.imgur.com/pFIMLsA.png', url: 'http://www.dalitv.com.tw:4568/live/dali/index.m3u8', source: 'iptv-org country' },
+    { id: 'supreme-master-tv', name: 'Supreme Master TV', category: '中文综合', lang: 'zh', region: 'Taiwan', logo: 'https://i.imgur.com/kFMHayP.png', url: 'https://lbs-us1.suprememastertv.com/720p.m3u8', source: 'iptv-org country' },
+    { id: 'tvbs-asia', name: 'TVBS Asia', category: '中文综合', lang: 'zh', region: 'Taiwan', logo: 'https://i.imgur.com/4S1rkhm.png', url: 'http://38.64.72.148/hls/modn/list/4005/playlist.m3u8', source: 'iptv-org country' },
+    { id: 'rtm-asean', name: 'RTM ASEAN', category: 'English News', lang: 'en', region: 'Singapore', logo: 'https://i.imgur.com/skAiUxg.png', url: 'https://d25tgymtnqzu8s.cloudfront.net/event/smil:event1/chunklist_b2596000_slENG.m3u8', source: 'iptv-org country' },
+    { id: 'livenow-abc-news', name: 'ABC News US', category: 'English News', lang: 'en', region: 'US', logo: 'https://livenow.news/images/abcnews-us_hu_9e8033f39e4d5045.jpeg', url: 'https://aegis-cloudfront-1.tubi.video/d6cbb0de-68e4-4f3b-82f9-bf5d526e0bde/index.m3u8', source: 'livenow.news' },
+    { id: 'livenow-nbc-news-now', name: 'NBC News Now Alternate', category: 'English News', lang: 'en', region: 'US', logo: 'https://livenow.news/images/nbcnewsnow_hu_fa5a22b5e91c561c.jpeg', url: 'https://xumo-drct-nbcnn-ir8ze.fast.nbcuni.com/live/master.m3u8', source: 'livenow.news' },
+    { id: 'livenow-fox', name: 'LiveNOW from FOX', category: 'English News', lang: 'en', region: 'US', logo: 'https://livenow.news/images/livenowfox_hu_78d9456d69479ed0.jpeg', url: 'https://fox-foxnewsnow-vizio.amagi.tv/playlist.m3u8', source: 'livenow.news' },
+    { id: 'livenow-scripps', name: 'Scripps TV Alternate', category: 'English News', lang: 'en', region: 'US', logo: 'https://livenow.news/images/scripps_hu_807c57c4c7a63d58.jpeg', url: 'https://547f72e6652371c3.mediapackage.us-east-1.amazonaws.com/out/v1/e3e6e29095844c4ba7d887f01e44a5ef/index.m3u8', source: 'livenow.news' },
+    { id: 'citynews-canada', name: 'CityNews Canada', category: 'English News', lang: 'en', region: 'Canada', logo: 'https://livenow.news/images/citynews_hu_b86fdf010eb61c4a.jpeg', url: 'https://citynewsregional.akamaized.net/hls/live/1024053/Regional_Live_8/master.m3u8', source: 'livenow.news' },
+    { id: 'global-news-canada', name: 'Global News Canada', category: 'English News', lang: 'en', region: 'Canada', logo: 'https://livenow.news/images/globalnews_hu_3c882fc9d29bcad2.jpeg', url: 'https://live.corusdigitaldev.com/groupd/live/49a91e7f-1023-430f-8d66-561055f3d0f7/live.isml/live-audio_1=96000-video=2499968.m3u8', source: 'livenow.news' },
+    { id: 'euronews-alt', name: 'Euronews Alternate', category: 'English News', lang: 'en', region: 'Europe', logo: 'https://livenow.news/images/euronews_hu_2adc21c127e6d35.jpeg', url: 'https://a-cdn.klowdtv.com/live3/euronews_720p/playlist.m3u8', source: 'livenow.news' },
+    { id: 'ticker-news', name: 'Ticker News', category: 'English News', lang: 'en', region: 'Australia', logo: 'https://livenow.news/images/ticker-news_hu_1d27a87035bcc732.jpeg', url: 'https://live-hls-7agy.livepush.io/live_abr_cdn/nsitWAl1pTZtwca/emnmZbKZcO8RfwJR/index.m3u8', source: 'livenow.news' },
+    { id: 'bbc-news-uk', name: 'BBC News UK', category: 'English News', lang: 'en', region: 'UK', logo: 'https://livenow.news/images/bbcnewsuk_hu_55e27e299146ee01.jpeg', url: 'https://vs-hls-push-ww-live.akamaized.net/x=4/i=urn:bbc:pips:service:bbc_news_channel_hd/t=3840/v=pv10/b=1604032/main.m3u8', source: 'livenow.news' },
+    { id: 'cbs-news-alt', name: 'CBS News Alternate', category: 'English News', lang: 'en', region: 'US', logo: 'https://livenow.news/images/cbsnews_hu_d605769ba6225b31.jpeg', url: 'https://dai.google.com/linear/hls/event/Sid4xiTQTkCT1SLu6rjUSQ/master.m3u8', source: 'livenow.news' },
+    { id: 'bbc-news-worldwide', name: 'BBC News Worldwide', category: 'English News', lang: 'en', region: 'UK', logo: 'https://livenow.news/images/bbcnews_hu_6e8eac7bdbdf022c.jpeg', url: 'https://dash2.antik.sk/live/test_bbc_world/playlist.m3u8', source: 'livenow.news' },
+    { id: 'gb-news-alt', name: 'GB News Alternate', category: 'English News', lang: 'en', region: 'UK', logo: 'https://livenow.news/images/gbnews_hu_e09c7f6c92dc5858.jpeg', url: 'https://amg01076-lightningintern-gbnewsau-samsungau-et7fz.amagi.tv/playlist/amg01076-lightningintern-gbnewsau-samsungau/playlist.m3u8', source: 'livenow.news' },
+    { id: 'ndtv-india', name: 'NDTV India', category: 'English News', lang: 'en', region: 'India', logo: 'https://livenow.news/images/ndtv_hu_c53c2c9cc41880ce.jpeg', url: 'https://ndtv24x7elemarchana.akamaized.net/hls/live/2003678/ndtv24x7/master.m3u8', source: 'livenow.news' },
+    { id: 'india-today', name: 'India Today', category: 'English News', lang: 'en', region: 'India', logo: 'https://livenow.news/images/indiatoday_hu_ce2b01a3fcc66a77.jpeg', url: 'https://feeds.intoday.in/hltapps/api/master.m3u8', source: 'livenow.news' },
+    { id: 'cna-alt', name: 'CNA Alternate', category: 'English News', lang: 'en', region: 'Singapore', logo: 'https://livenow.news/images/cna_hu_4bae030b0befef02.jpeg', url: 'https://d2e1asnsl7br7b.cloudfront.net/7782e205e72f43aeb4a48ec97f66ebbe/index.m3u8', source: 'livenow.news' },
+    { id: 'telesur-english', name: 'TeleSUR English', category: 'English News', lang: 'en', region: 'Venezuela', logo: 'https://livenow.news/images/telesur_hu_408abfea96423450.jpeg', url: 'https://mblenmain01.telesur.ultrabase.net/mblivev3/hd/playlist.m3u8', source: 'livenow.news' },
+    { id: 'wion-india', name: 'WION', category: 'English News', lang: 'en', region: 'India', logo: 'https://livenow.news/images/wion_hu_c9a87ebcf300cc94.jpeg', url: 'https://d7x8z4yuq42qn.cloudfront.net/index_7.m3u8', source: 'livenow.news' },
+    { id: 'press-tv', name: 'Press TV', category: 'English News', lang: 'en', region: 'Iran', logo: 'https://livenow.news/images/presstv_hu_3f1e843b6c21d054.jpeg', url: 'https://live.presstv.ir/hls/presstv_5_482/index.m3u8', source: 'livenow.news' },
+    { id: 'sabc-news', name: 'SABC News', category: 'English News', lang: 'en', region: 'South Africa', logo: 'https://livenow.news/images/sabc-news_hu_211888b714a456dd.jpeg', url: 'https://sabconetanw.cdn.mangomolo.com/news/smil:news.stream.smil/master.m3u8', source: 'livenow.news' },
+    { id: 'sky-news-australia', name: 'Sky News Australia', category: 'English News', lang: 'en', region: 'Australia', logo: 'https://livenow.news/images/sky-news-australia_hu_77f6caed4a66404b.jpeg', url: 'https://i.mjh.nz/.r/sky-news-now.m3u8', source: 'livenow.news' },
+    { id: 'rt-news', name: 'RT News', category: 'English News', lang: 'en', region: 'Russia', logo: 'https://livenow.news/images/rt_hu_7c61dfd43f91a522.jpeg', url: 'https://rt-glb.rttv.com/dvr/rtnews/playlist_4500Kb.m3u8', source: 'livenow.news' }
 ];
 
 const DISABLED_LIVE_CHANNEL_IDS = new Set([
@@ -164,7 +209,8 @@ const DISABLED_LIVE_CHANNEL_IDS = new Set([
     'phoenix-info', 'jilin-lifestyle', 'taiwan-indigenous',
     'indigenous-tv', 'china-weather', 'shanghai-education',
     'cetv-1', 'cetv-2', 'tdm-ou-mun', 'sky-news',
-    'cna-international', 'nasa-public', 'docurama', 'bob-ross'
+    'cna-international', 'nasa-public', 'docurama', 'bob-ross',
+    'americas-funniest-home-videos'
 ]);
 
 const ACTIVE_LIVE_CHANNELS = LIVE_CHANNELS.filter(channel => !DISABLED_LIVE_CHANNEL_IDS.has(channel.id));
