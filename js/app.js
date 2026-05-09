@@ -56,6 +56,10 @@ function getSourceReliabilityRank(item) {
 }
 
 function compareSearchResults(query) {
+    if (typeof window.compareProviderSearchResults === 'function') {
+        return window.compareProviderSearchResults(query, selectedAPIs);
+    }
+
     return (a, b) => {
         const rankA = getResultRelevanceRank(a, query) * 10 + getSourceReliabilityRank(a);
         const rankB = getResultRelevanceRank(b, query) * 10 + getSourceReliabilityRank(b);
@@ -857,6 +861,10 @@ async function search() {
                 .replace(/"/g, '&quot;');
             const sourceInfo = item.source_name ?
                 `<span class="bg-[#222] text-xs px-1.5 py-0.5 rounded-full">${item.source_name}</span>` : '';
+            const providerBadge = typeof window.getProviderBadge === 'function' ? window.getProviderBadge(item.source_code || '') : null;
+            const qualityBadge = providerBadge
+                ? `<span class="${providerBadge.className} text-xs px-1.5 py-0.5 rounded-full">${escapeHtml(providerBadge.label)}</span>`
+                : '';
             const sourceCode = item.source_code || '';
 
             // 添加API URL属性，用于详情获取
@@ -913,7 +921,7 @@ async function search() {
                             </div>
 
                             <div class="flex justify-between items-center mt-1 pt-1 border-t border-gray-800">
-                                ${sourceInfo ? `<div>${sourceInfo}</div>` : '<div></div>'}
+                                ${(sourceInfo || qualityBadge) ? `<div class="flex flex-wrap gap-1">${sourceInfo}${qualityBadge}</div>` : '<div></div>'}
                                 <!-- 接口名称过长会被挤变形
                                 <div>
                                     <span class="text-gray-500 flex items-center hover:text-blue-400 transition-colors">
@@ -1047,6 +1055,12 @@ async function showDetails(id, vod_name, sourceCode) {
         currentVideoTitle = vod_name || '未知视频';
 
         if (data.episodes && data.episodes.length > 0) {
+            const providerProfile = typeof window.getProviderProfile === 'function' ? window.getProviderProfile(sourceCode) : null;
+            const providerNoteHtml = providerProfile?.notes ? `
+                <div class="mb-4 px-3 py-2 rounded-lg border border-emerald-900/50 bg-emerald-950/30 text-emerald-200 text-sm">
+                    源状态：${escapeHtml(providerProfile.notes)} · 共 ${data.episodes.length} 个可播放地址
+                </div>
+            ` : '';
             // 构建详情信息HTML
             let detailInfoHtml = '';
             if (data.videoInfo) {
@@ -1082,6 +1096,7 @@ async function showDetails(id, vod_name, sourceCode) {
             currentEpisodeIndex = 0;
 
             modalContent.innerHTML = `
+                ${providerNoteHtml}
                 ${detailInfoHtml}
                 <div class="flex flex-wrap items-center justify-between mb-4 gap-2">
                     <div class="flex items-center gap-2">

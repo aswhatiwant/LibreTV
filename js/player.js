@@ -1814,7 +1814,12 @@ async function showSwitchResourceModal() {
         if (speedA === -1 && speedB !== -1) return 1;
         if (speedA !== -1 && speedB === -1) return -1;
         if (speedA === -1 && speedB === -1) return 0;
-        
+
+        const profileA = typeof window.getProviderProfile === 'function' ? window.getProviderProfile(keyA) : { priority: 0 };
+        const profileB = typeof window.getProviderProfile === 'function' ? window.getProviderProfile(keyB) : { priority: 0 };
+        const qualityCompare = (profileB.priority || 0) - (profileA.priority || 0);
+        if (qualityCompare !== 0) return qualityCompare;
+
         return speedA - speedB;
     });
 
@@ -1828,6 +1833,7 @@ async function showSwitchResourceModal() {
         const isCurrentSource = String(sourceKey) === String(currentSourceCode) && String(result.vod_id) === String(currentVideoId);
         const sourceName = resourceOptions.find(opt => opt.key === sourceKey)?.name || '未知资源';
         const speedResult = speedResults[sourceKey] || { speed: -1, error: '未测试' };
+        const providerBadge = typeof window.getProviderBadge === 'function' ? window.getProviderBadge(sourceKey) : null;
         const switchAttrs = isCurrentSource ? '' : `
                  data-switch-resource="1"
                  data-switch-source="${encodeURIComponent(sourceKey)}"
@@ -1855,6 +1861,7 @@ async function showSwitchResourceModal() {
                 <div class="mt-2">
                     <div class="text-xs font-medium text-gray-200 truncate">${escapeHtml(result.vod_name || '')}</div>
                     <div class="text-[10px] text-gray-400 truncate">${escapeHtml(sourceName)}</div>
+                    ${providerBadge ? `<div class="text-[10px] mt-1 inline-flex px-1.5 py-0.5 rounded ${providerBadge.className}">${escapeHtml(providerBadge.label)}</div>` : ''}
                     <div class="text-[10px] text-gray-500 mt-1">
                         ${speedResult.episodes ? `${speedResult.episodes}集` : ''}
                     </div>
