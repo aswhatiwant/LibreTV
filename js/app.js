@@ -1163,6 +1163,16 @@ async function showDetails(id, vod_name, sourceCode) {
         const response = await fetch(`/api/detail?id=${encodeURIComponent(id)}${apiParams}${cacheBuster}`);
 
         const data = await response.json();
+        const stremioEnhancement = window.StremioServices?.getEnhancementByTitle
+            ? await window.StremioServices.getEnhancementByTitle(vod_name || '').catch(() => null)
+            : null;
+        if (data.videoInfo && stremioEnhancement?.meta && window.StremioServices?.enhanceVideoInfo) {
+            data.videoInfo = window.StremioServices.enhanceVideoInfo(data.videoInfo, stremioEnhancement.meta);
+        }
+        if (Array.isArray(stremioEnhancement?.directStreams) && stremioEnhancement.directStreams.length > 0) {
+            const directUrls = stremioEnhancement.directStreams.map(stream => stream.url).filter(Boolean);
+            data.episodes = [...new Set([...(data.episodes || []), ...directUrls])];
+        }
 
         const modal = document.getElementById('modal');
         const modalTitle = document.getElementById('modalTitle');
@@ -1178,6 +1188,14 @@ async function showDetails(id, vod_name, sourceCode) {
 
         if (data.episodes && data.episodes.length > 0) {
             const providerProfile = typeof window.getProviderProfile === 'function' ? window.getProviderProfile(sourceCode) : null;
+            const stremioExtraHtml = stremioEnhancement?.meta ? `
+                <div class="mb-4 px-3 py-2 rounded-lg border border-sky-900/50 bg-sky-950/30 text-sky-200 text-sm">
+                    Stremio 元数据：${escapeHtml(stremioEnhancement.meta.name || '')}
+                    ${stremioEnhancement.meta.imdbRating ? ` · IMDb ${escapeHtml(stremioEnhancement.meta.imdbRating)}` : ''}
+                    ${Array.isArray(stremioEnhancement.subtitles) && stremioEnhancement.subtitles.length > 0 ? ` · 字幕 ${stremioEnhancement.subtitles.length} 个` : ''}
+                    ${Array.isArray(stremioEnhancement.directStreams) && stremioEnhancement.directStreams.length > 0 ? ` · 直链源 ${stremioEnhancement.directStreams.length} 个` : ''}
+                </div>
+            ` : '';
             const providerNoteHtml = providerProfile?.notes ? `
                 <div class="mb-4 px-3 py-2 rounded-lg border border-emerald-900/50 bg-emerald-950/30 text-emerald-200 text-sm">
                     源状态：${escapeHtml(providerProfile.notes)} · 共 ${data.episodes.length} 个可播放地址
@@ -1219,6 +1237,7 @@ async function showDetails(id, vod_name, sourceCode) {
 
             modalContent.innerHTML = `
                 ${providerNoteHtml}
+                ${stremioExtraHtml}
                 ${detailInfoHtml}
                 <div class="flex flex-wrap items-center justify-between mb-4 gap-2">
                     <div class="flex items-center gap-2">

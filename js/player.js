@@ -102,11 +102,20 @@ Artplayer.FULLSCREEN_WEB_IN_BODY = true;
 document.addEventListener('DOMContentLoaded', function () {
     document.addEventListener('click', function (event) {
         const switchCard = event.target.closest('[data-switch-resource]');
-        if (!switchCard) return;
+        if (switchCard) {
+            const sourceKey = decodeURIComponent(switchCard.dataset.switchSource || '');
+            const vodId = decodeURIComponent(switchCard.dataset.switchVodId || '');
+            switchToResource(sourceKey, vodId);
+            return;
+        }
 
-        const sourceKey = decodeURIComponent(switchCard.dataset.switchSource || '');
-        const vodId = decodeURIComponent(switchCard.dataset.switchVodId || '');
-        switchToResource(sourceKey, vodId);
+        const subtitleButton = event.target.closest('[data-subtitle-url]');
+        if (subtitleButton) {
+            applyExternalSubtitle(
+                decodeURIComponent(subtitleButton.dataset.subtitleUrl || ''),
+                decodeURIComponent(subtitleButton.dataset.subtitleLabel || '字幕')
+            );
+        }
     });
 
     // 先检查用户是否已通过密码验证
@@ -248,6 +257,7 @@ function initializePageContent() {
 
     // 渲染源信息
     renderResourceInfoBar();
+    loadStremioSubtitlePanel();
 
     // 更新集数信息
     updateEpisodeInfo();
@@ -510,6 +520,15 @@ function initPlayer(videoUrl) {
         aspectRatio: false,
         fullscreen: true,
         fullscreenWeb: true,
+        subtitle: {
+            url: '',
+            type: 'vtt',
+            style: {
+                color: '#fff',
+                fontSize: '22px',
+                textShadow: '0 1px 3px #000'
+            }
+        },
         subtitleOffset: false,
         miniProgressBar: !isLiveMode,
         mutex: true,
@@ -808,6 +827,58 @@ function initPlayer(videoUrl) {
             `;
         }
     }, 10000);
+}
+
+async function loadStremioSubtitlePanel() {
+    const panel = document.getElementById('subtitlePanel');
+    if (!panel || isLiveMode || !window.StremioServices?.getEnhancementByTitle) return;
+
+    panel.classList.remove('hidden');
+    panel.innerHTML = '<div class="px-4 py-2 text-sm text-gray-400">正在查找字幕...</div>';
+
+    try {
+        const enhancement = await window.StremioServices.getEnhancementByTitle(currentVideoTitle);
+        const subtitles = enhancement?.subtitles || [];
+        if (!subtitles.length) {
+            panel.innerHTML = '<div class="px-4 py-2 text-sm text-gray-500">未找到匹配字幕</div>';
+            return;
+        }
+
+        panel.innerHTML = `
+            <div class="px-4 py-2 flex flex-wrap items-center gap-2 bg-[#111] rounded-lg border border-[#333]">
+                <span class="text-sm text-gray-300 mr-1">字幕</span>
+                ${subtitles.map(subtitle => `
+                    <button type="button"
+                            class="px-2 py-1 text-xs rounded bg-[#222] hover:bg-[#333] border border-[#444]"
+                            data-subtitle-url="${encodeURIComponent(subtitle.url)}"
+                            data-subtitle-label="${encodeURIComponent(subtitle.label)}">
+                        ${escapeHtml(subtitle.label)}
+                    </button>
+                `).join('')}
+            </div>
+        `;
+    } catch (error) {
+        panel.innerHTML = '<div class="px-4 py-2 text-sm text-gray-500">字幕服务暂不可用</div>';
+    }
+}
+
+function applyExternalSubtitle(subtitleUrl, label) {
+    if (!subtitleUrl || !art) return;
+
+    try {
+        if (art.subtitle && typeof art.subtitle.switch === 'function') {
+            art.subtitle.switch(subtitleUrl, {
+                name: label || '字幕',
+                type: 'vtt'
+            });
+            showToast?.(`已切换字幕：${label || '字幕'}`, 'success');
+            return;
+        }
+    } catch (error) {
+        console.warn('Artplayer 字幕切换失败:', error);
+    }
+
+    window.open(subtitleUrl, '_blank', 'noopener,noreferrer');
 }
 
 function getVideoType(url) {

@@ -10,7 +10,8 @@
     "dev": "nodemon server.mjs",
     "start": "node server.mjs",
     "check:live": "node scripts/check-live-channels.mjs",
-    "check:vod-sources": "node scripts/check-vod-sources.mjs"
+    "check:vod-sources": "node scripts/check-vod-sources.mjs",
+    "check:stremio": "node scripts/check-stremio-services.mjs"
   },
   "dependencies": {
     "axios": "^1.9.0",
