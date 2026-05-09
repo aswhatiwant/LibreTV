@@ -1220,11 +1220,6 @@ async function showDetails(id, vod_name, sourceCode) {
             modalContent.innerHTML = `
                 ${providerNoteHtml}
                 ${detailInfoHtml}
-                <div id="providerStatusOverview">
-                    <div class="mb-4 rounded-lg border border-[#2b2b2b] bg-[#101010] p-3 text-sm text-gray-400">
-                        正在检测其他数据源的可播状态...
-                    </div>
-                </div>
                 <div class="flex flex-wrap items-center justify-between mb-4 gap-2">
                     <div class="flex items-center gap-2">
                         <button data-episode-order="1"
@@ -1244,6 +1239,11 @@ async function showDetails(id, vod_name, sourceCode) {
                 </div>
                 <div id="episodesGrid" class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2">
                     ${renderEpisodes(vod_name, sourceCode, id)}
+                </div>
+                <div id="providerStatusOverview" class="mt-6">
+                    <div class="mb-4 rounded-lg border border-[#2b2b2b] bg-[#101010] p-3 text-sm text-gray-400">
+                        正在检测其他数据源的可播状态...
+                    </div>
                 </div>
             `;
             loadProviderStatusOverview(vod_name, sourceCode, id);
