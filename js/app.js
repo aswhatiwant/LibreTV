@@ -18,6 +18,7 @@ let currentEpisodes = [];
 let currentVideoTitle = '';
 // 全局变量用于倒序状态
 let episodesReversed = false;
+let currentSearchRequestId = 0;
 
 function encodeDataAttr(value) {
     return encodeURIComponent(String(value || ''));
@@ -73,6 +74,190 @@ function compareSearchResults(query) {
 
         return (a.vod_name || '').localeCompare(b.vod_name || '');
     };
+}
+
+function renderSearchResultCards(allResults) {
+    return allResults.map(item => {
+        const safeName = escapeHtml(item.vod_name || '');
+        const sourceInfo = item.source_name ?
+            `<span class="bg-[#222] text-xs px-1.5 py-0.5 rounded-full">${escapeHtml(item.source_name)}</span>` : '';
+        const providerBadge = typeof window.getProviderBadge === 'function' ? window.getProviderBadge(item.source_code || '') : null;
+        const qualityBadge = providerBadge
+            ? `<span class="${providerBadge.className} text-xs px-1.5 py-0.5 rounded-full">${escapeHtml(providerBadge.label)}</span>`
+            : '';
+        const healthBadge = window.ProviderAdapters?.getHealthBadge
+            ? window.ProviderAdapters.getHealthBadge(item.__health)
+            : null;
+        const healthBadgeHtml = healthBadge
+            ? `<span class="${healthBadge.className} text-xs px-1.5 py-0.5 rounded-full">${escapeHtml(healthBadge.label)}</span>`
+            : '';
+        const sourceCode = item.source_code || '';
+
+        const apiUrlAttr = item.api_url ?
+            `data-api-url="${escapeHtml(item.api_url)}"` : '';
+
+        const sourceApi = sourceCode === 'custom'
+            ? item.api_url
+            : (API_SITES[sourceCode] && API_SITES[sourceCode].api) || '';
+        const coverUrl = normalizeMediaUrl(item.vod_pic, sourceApi);
+        const posterFallback = getDefaultPosterDataUrl();
+        const proxiedCoverUrl = window.isKnownBlockedCoverUrl?.(coverUrl)
+            ? posterFallback
+            : ProxyAuth?.buildProxyUrlSync
+            ? ProxyAuth.buildProxyUrlSync(coverUrl)
+            : `${PROXY_URL}${encodeURIComponent(coverUrl)}`;
+        const hasCover = !!proxiedCoverUrl;
+
+        return `
+            <div class="card-hover bg-[#111] rounded-lg overflow-hidden cursor-pointer transition-all hover:scale-[1.02] h-full shadow-sm hover:shadow-md"
+                 data-result-card="1"
+                 data-vod-id="${encodeDataAttr(item.vod_id ? item.vod_id.toString() : '')}"
+                 data-vod-name="${encodeDataAttr(item.vod_name || '未知视频')}"
+                 data-source-code="${encodeDataAttr(item.source_code || '')}"
+                 ${apiUrlAttr}>
+                <div class="flex h-full">
+                    ${hasCover ? `
+                    <div class="relative flex-shrink-0 search-card-img-container">
+                        <img src="${escapeHtml(proxiedCoverUrl)}" alt="${safeName}"
+                             class="h-full w-full object-cover transition-transform hover:scale-110"
+                             onerror="this.onerror=null; this.src='${posterFallback}'; this.classList.add('object-contain');"
+                             loading="lazy">
+                        <div class="absolute inset-0 bg-gradient-to-r from-black/30 to-transparent"></div>
+                    </div>` : ''}
+
+                    <div class="p-2 flex flex-col flex-grow">
+                        <div class="flex-grow">
+                            <h3 class="font-semibold mb-2 break-words line-clamp-2 ${hasCover ? '' : 'text-center'}" title="${safeName}">${safeName}</h3>
+
+                            <div class="flex flex-wrap ${hasCover ? '' : 'justify-center'} gap-1 mb-2">
+                                ${(item.type_name || '').toString().replace(/</g, '&lt;') ?
+                `<span class="text-xs py-0.5 px-1.5 rounded bg-opacity-20 bg-blue-500 text-blue-300">
+                                      ${escapeHtml(item.type_name || '')}
+                                  </span>` : ''}
+                                ${(item.vod_year || '') ?
+                `<span class="text-xs py-0.5 px-1.5 rounded bg-opacity-20 bg-purple-500 text-purple-300">
+                                      ${escapeHtml(item.vod_year || '')}
+                                  </span>` : ''}
+                            </div>
+                            <p class="text-gray-400 line-clamp-2 overflow-hidden ${hasCover ? '' : 'text-center'} mb-2">
+                                ${escapeHtml(item.vod_remarks || '暂无介绍')}
+                            </p>
+                        </div>
+
+                        <div class="flex justify-between items-center mt-1 pt-1 border-t border-gray-800">
+                            ${(sourceInfo || qualityBadge || healthBadgeHtml) ? `<div class="flex flex-wrap gap-1">${sourceInfo}${qualityBadge}${healthBadgeHtml}</div>` : '<div></div>'}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function getSourceDisplayName(sourceCode) {
+    if (API_SITES[sourceCode]) return API_SITES[sourceCode].name;
+    if (String(sourceCode || '').startsWith('custom_')) {
+        const customApi = getCustomApiInfo(String(sourceCode).replace('custom_', ''));
+        return customApi?.name || '自定义源';
+    }
+    return sourceCode || '未知源';
+}
+
+function pickBestResultForTitle(results, title) {
+    if (!Array.isArray(results) || results.length === 0) return null;
+    const normalizedTitle = normalizeSearchText(title);
+    return results.find(item => normalizeSearchText(item?.vod_name) === normalizedTitle)
+        || results.find(item => normalizeSearchText(item?.vod_name).includes(normalizedTitle))
+        || results[0];
+}
+
+function renderProviderStatusOverview(items) {
+    return `
+        <div class="mb-4 rounded-lg border border-[#2b2b2b] bg-[#101010] p-3">
+            <div class="flex items-center justify-between gap-2 mb-3">
+                <div class="text-sm font-semibold text-gray-200">片源可用性概览</div>
+                <div class="text-xs text-gray-500">按可播状态和源质量排序</div>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                ${items.map(item => {
+                    const healthBadge = window.ProviderAdapters?.getHealthBadge
+                        ? window.ProviderAdapters.getHealthBadge(item.health)
+                        : { label: item.health?.state || '未知', className: 'bg-gray-800 text-gray-300' };
+                    const disabledClass = item.health?.state === 'playable' ? 'cursor-pointer hover:border-green-700 hover:bg-green-950/20' : 'opacity-75';
+                    const attrs = item.health?.state === 'playable' && item.result ? `
+                        data-provider-status-item="1"
+                        data-vod-id="${encodeDataAttr(item.result.vod_id || '')}"
+                        data-vod-name="${encodeDataAttr(item.result.vod_name || item.title || '')}"
+                        data-source-code="${encodeDataAttr(item.sourceCode || '')}"
+                    ` : '';
+                    return `
+                        <div class="rounded border border-[#333] bg-[#171717] p-2 transition-colors ${disabledClass}" ${attrs}>
+                            <div class="flex items-center justify-between gap-2">
+                                <span class="text-sm text-gray-200 truncate">${escapeHtml(item.sourceName)}</span>
+                                <span class="${healthBadge.className} text-xs px-1.5 py-0.5 rounded-full whitespace-nowrap">${escapeHtml(healthBadge.label)}</span>
+                            </div>
+                            <div class="text-xs text-gray-500 truncate mt-1">${escapeHtml(item.result?.vod_name || item.message || '未找到同名结果')}</div>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+        </div>
+    `;
+}
+
+async function loadProviderStatusOverview(title, currentSourceCode, currentVodId) {
+    const container = document.getElementById('providerStatusOverview');
+    if (!container || !window.ProviderAdapters?.fetchProviderDetailHealth) return;
+
+    const sourceIds = [...new Set([currentSourceCode, ...selectedAPIs].filter(Boolean))].slice(0, 16);
+    const statusItems = sourceIds.map(sourceCode => ({
+        sourceCode,
+        sourceName: getSourceDisplayName(sourceCode),
+        title,
+        health: null,
+        result: null,
+        message: '检测中...'
+    }));
+
+    container.innerHTML = renderProviderStatusOverview(statusItems);
+
+    await Promise.all(statusItems.map(async (item) => {
+        try {
+            let result = null;
+            if (item.sourceCode === currentSourceCode && currentVodId) {
+                result = { vod_id: currentVodId, vod_name: title, source_code: currentSourceCode };
+            } else {
+                const results = await searchByAPIAndKeyWord(item.sourceCode, title);
+                result = pickBestResultForTitle(results, title);
+            }
+
+            item.result = result;
+            item.health = result?.vod_id
+                ? await window.ProviderAdapters.fetchProviderDetailHealth(item.sourceCode, result.vod_id, { timeoutMs: 6500 })
+                : { state: 'no_stream', episodes: 0, latency: -1, message: '未找到同名结果', checkedAt: Date.now() };
+            item.message = item.health.message;
+        } catch (error) {
+            item.health = {
+                state: 'error',
+                episodes: 0,
+                latency: -1,
+                message: error.message || '检测失败',
+                checkedAt: Date.now()
+            };
+            item.message = item.health.message;
+        }
+    }));
+
+    statusItems.sort((a, b) => {
+        const healthScore = (item) => item.health?.state === 'playable' ? 100 : item.health?.state === 'timeout' ? 30 : 0;
+        const profileA = typeof window.getProviderProfile === 'function' ? window.getProviderProfile(a.sourceCode) : { priority: 0 };
+        const profileB = typeof window.getProviderProfile === 'function' ? window.getProviderProfile(b.sourceCode) : { priority: 0 };
+        return (healthScore(b) - healthScore(a)) || ((profileB.priority || 0) - (profileA.priority || 0));
+    });
+
+    if (document.getElementById('providerStatusOverview') === container) {
+        container.innerHTML = renderProviderStatusOverview(statusItems);
+    }
 }
 
 // 页面初始化
@@ -622,17 +807,25 @@ function setupEventListeners() {
             }
 
             const episodeButton = e.target.closest('[data-episode-button]');
-            if (!episodeButton) {
+            if (episodeButton) {
+                playVideo(
+                    decodeDataAttr(episodeButton.dataset.episodeUrl),
+                    decodeDataAttr(episodeButton.dataset.vodName),
+                    decodeDataAttr(episodeButton.dataset.sourceCode),
+                    parseInt(episodeButton.dataset.episodeIndex || '0', 10),
+                    decodeDataAttr(episodeButton.dataset.vodId)
+                );
                 return;
             }
 
-            playVideo(
-                decodeDataAttr(episodeButton.dataset.episodeUrl),
-                decodeDataAttr(episodeButton.dataset.vodName),
-                decodeDataAttr(episodeButton.dataset.sourceCode),
-                parseInt(episodeButton.dataset.episodeIndex || '0', 10),
-                decodeDataAttr(episodeButton.dataset.vodId)
-            );
+            const providerItem = e.target.closest('[data-provider-status-item]');
+            if (providerItem) {
+                showDetails(
+                    decodeDataAttr(providerItem.dataset.vodId),
+                    decodeDataAttr(providerItem.dataset.vodName),
+                    decodeDataAttr(providerItem.dataset.sourceCode)
+                );
+            }
         });
     }
 
@@ -767,6 +960,7 @@ async function search() {
     }
 
     showLoading();
+    const searchRequestId = ++currentSearchRequestId;
 
     try {
         // 保存搜索历史
@@ -853,93 +1047,21 @@ async function search() {
             // 如果更新URL失败，继续执行搜索
         }
 
-        // 添加XSS保护，使用textContent和属性转义
-        const safeResults = allResults.map(item => {
-            const safeName = (item.vod_name || '').toString()
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;');
-            const sourceInfo = item.source_name ?
-                `<span class="bg-[#222] text-xs px-1.5 py-0.5 rounded-full">${item.source_name}</span>` : '';
-            const providerBadge = typeof window.getProviderBadge === 'function' ? window.getProviderBadge(item.source_code || '') : null;
-            const qualityBadge = providerBadge
-                ? `<span class="${providerBadge.className} text-xs px-1.5 py-0.5 rounded-full">${escapeHtml(providerBadge.label)}</span>`
-                : '';
-            const sourceCode = item.source_code || '';
+        resultsDiv.innerHTML = renderSearchResultCards(allResults);
 
-            // 添加API URL属性，用于详情获取
-            const apiUrlAttr = item.api_url ?
-                `data-api-url="${item.api_url.replace(/"/g, '&quot;')}"` : '';
-
-            // 修改为水平卡片布局，图片在左侧，文本在右侧，并优化样式
-            const sourceApi = sourceCode === 'custom'
-                ? item.api_url
-                : (API_SITES[sourceCode] && API_SITES[sourceCode].api) || '';
-            const coverUrl = normalizeMediaUrl(item.vod_pic, sourceApi);
-            const posterFallback = getDefaultPosterDataUrl();
-            const proxiedCoverUrl = window.isKnownBlockedCoverUrl?.(coverUrl)
-                ? posterFallback
-                : ProxyAuth?.buildProxyUrlSync
-                ? ProxyAuth.buildProxyUrlSync(coverUrl)
-                : `${PROXY_URL}${encodeURIComponent(coverUrl)}`;
-            const hasCover = !!proxiedCoverUrl;
-
-            return `
-                <div class="card-hover bg-[#111] rounded-lg overflow-hidden cursor-pointer transition-all hover:scale-[1.02] h-full shadow-sm hover:shadow-md"
-                     data-result-card="1"
-                     data-vod-id="${encodeDataAttr(item.vod_id ? item.vod_id.toString() : '')}"
-                     data-vod-name="${encodeDataAttr(item.vod_name || '未知视频')}"
-                     data-source-code="${encodeDataAttr(item.source_code || '')}"
-                     ${apiUrlAttr}>
-                    <div class="flex h-full">
-                        ${hasCover ? `
-                        <div class="relative flex-shrink-0 search-card-img-container">
-                            <img src="${proxiedCoverUrl}" alt="${safeName}"
-                                 class="h-full w-full object-cover transition-transform hover:scale-110"
-                                 onerror="this.onerror=null; this.src='${posterFallback}'; this.classList.add('object-contain');"
-                                 loading="lazy">
-                            <div class="absolute inset-0 bg-gradient-to-r from-black/30 to-transparent"></div>
-                        </div>` : ''}
-
-                        <div class="p-2 flex flex-col flex-grow">
-                            <div class="flex-grow">
-                                <h3 class="font-semibold mb-2 break-words line-clamp-2 ${hasCover ? '' : 'text-center'}" title="${safeName}">${safeName}</h3>
-
-                                <div class="flex flex-wrap ${hasCover ? '' : 'justify-center'} gap-1 mb-2">
-                                    ${(item.type_name || '').toString().replace(/</g, '&lt;') ?
-                    `<span class="text-xs py-0.5 px-1.5 rounded bg-opacity-20 bg-blue-500 text-blue-300">
-                                          ${(item.type_name || '').toString().replace(/</g, '&lt;')}
-                                      </span>` : ''}
-                                    ${(item.vod_year || '') ?
-                    `<span class="text-xs py-0.5 px-1.5 rounded bg-opacity-20 bg-purple-500 text-purple-300">
-                                          ${item.vod_year}
-                                      </span>` : ''}
-                                </div>
-                                <p class="text-gray-400 line-clamp-2 overflow-hidden ${hasCover ? '' : 'text-center'} mb-2">
-                                    ${(item.vod_remarks || '暂无介绍').toString().replace(/</g, '&lt;')}
-                                </p>
-                            </div>
-
-                            <div class="flex justify-between items-center mt-1 pt-1 border-t border-gray-800">
-                                ${(sourceInfo || qualityBadge) ? `<div class="flex flex-wrap gap-1">${sourceInfo}${qualityBadge}</div>` : '<div></div>'}
-                                <!-- 接口名称过长会被挤变形
-                                <div>
-                                    <span class="text-gray-500 flex items-center hover:text-blue-400 transition-colors">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                                        </svg>
-                                        播放
-                                    </span>
-                                </div>
-                                -->
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }).join('');
-
-        resultsDiv.innerHTML = safeResults;
+        if (window.ProviderAdapters?.precheckSearchResults) {
+            window.ProviderAdapters.precheckSearchResults(allResults, {
+                limit: 24,
+                concurrency: 4,
+                timeoutMs: 6500
+            }).then(() => {
+                if (searchRequestId !== currentSearchRequestId) return;
+                allResults.sort(compareSearchResults(query));
+                resultsDiv.innerHTML = renderSearchResultCards(allResults);
+            }).catch(error => {
+                console.warn('搜索结果可播预检失败:', error);
+            });
+        }
     } catch (error) {
         console.error('搜索错误:', error);
         if (error.name === 'AbortError') {
@@ -1098,6 +1220,11 @@ async function showDetails(id, vod_name, sourceCode) {
             modalContent.innerHTML = `
                 ${providerNoteHtml}
                 ${detailInfoHtml}
+                <div id="providerStatusOverview">
+                    <div class="mb-4 rounded-lg border border-[#2b2b2b] bg-[#101010] p-3 text-sm text-gray-400">
+                        正在检测其他数据源的可播状态...
+                    </div>
+                </div>
                 <div class="flex flex-wrap items-center justify-between mb-4 gap-2">
                     <div class="flex items-center gap-2">
                         <button data-episode-order="1"
@@ -1119,6 +1246,7 @@ async function showDetails(id, vod_name, sourceCode) {
                     ${renderEpisodes(vod_name, sourceCode, id)}
                 </div>
             `;
+            loadProviderStatusOverview(vod_name, sourceCode, id);
         } else {
             modalContent.innerHTML = `
                 <div class="text-center py-8">

@@ -170,6 +170,14 @@
         const orderScore = Math.max(0, 18 - sourceOrder);
         const posterScore = hasUsablePoster(item) ? 8 : -10;
         const episodeHintScore = item?.vod_remarks ? 3 : 0;
+        const health = item?.__health;
+        const healthScore = health?.state === 'playable'
+            ? 90
+            : health?.state === 'no_stream'
+            ? -120
+            : (health?.state === 'timeout' || health?.state === 'error')
+            ? -35
+            : 0;
 
         return getRelevanceScore(item, query)
             + profile.priority
@@ -178,7 +186,8 @@
             + getSignalScore(profile.poster)
             + orderScore
             + posterScore
-            + episodeHintScore;
+            + episodeHintScore
+            + healthScore;
     }
 
     function compareProviderSearchResults(query, selectedAPIs = []) {
